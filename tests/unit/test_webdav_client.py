@@ -19,7 +19,8 @@ class TestBuildZip:
         pdf = tmp_path / "test.pdf"
         pdf.write_text("fake pdf content")
         data = _build_zip(pdf)
-        import zipfile, io
+        import io
+        import zipfile
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
             assert len(zf.namelist()) == 1
             info = zf.getinfo(zf.namelist()[0])

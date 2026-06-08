@@ -6,26 +6,26 @@ prop XML generation/parsing, and storage_path normalization.
 from __future__ import annotations
 
 import base64
+import contextlib
 import hashlib
 import os
+import re
 import zipfile
 from io import BytesIO
 from pathlib import Path
 from typing import Any
-from xml.etree import ElementTree as ET  # noqa: S405  # used for XML construction only
-from defusedxml import ElementTree as SafeET  # for XML parsing
+from xml.etree import ElementTree as ET  # used for XML construction only
 
+from defusedxml import ElementTree as SafeET  # for XML parsing
 from webdav4.client import Client as WebDAVClient
 
 from zotero_cli.models.config import WebDAVConfig
 from zotero_cli.models.errors import (
-    Md5MismatchError,
-    WebdavAuthFailedError,
     WebdavConnectionError,
-    WebdavFileExistsError,
     WebdavPropInvalidError,
-    WebdavTimeoutError,
 )
+
+_ZOTERO_KEY_RE = re.compile(r"^[A-Z0-9]+$")
 
 
 def _build_zip(file_path: Path) -> bytes:
@@ -85,7 +85,12 @@ class WebDAVStorage:
         return self._storage_path
 
     def _full_path(self, suffix: str) -> str:
-        """Build the full WebDAV path: storage_path + suffix."""
+        """Build the full WebDAV path: storage_path + suffix.
+        Validates that the key part matches Zotero key format to prevent path traversal.
+        """
+        key = suffix.rsplit(".", 1)[0] if "." in suffix else suffix
+        if not _ZOTERO_KEY_RE.match(key):
+            raise ValueError(f"Invalid Zotero key: {key!r}")
         sp = self._storage_path
         return f"{sp}/{suffix}" if sp else f"/{suffix}"
 
@@ -121,10 +126,8 @@ class WebDAVStorage:
     def delete_file(self, key: str, suffix: str) -> None:
         """Delete a file at <storage_path>/<key>.<suffix>. 404 is silently ignored."""
         path = self._full_path(f"{key}.{suffix}")
-        try:
+        with contextlib.suppress(Exception):
             self._client.remove(path)
-        except Exception:
-            pass  # 404 is fine
 
     def get_prop(self, key: str) -> bytes | None:
         """Download the .prop file for key. Returns None if not found."""
@@ -234,10 +237,8 @@ def upload_attachment_webdav(
     except Exception as e:
         # Rollback: delete the attachment item if we created it
         if not reuse_key:
-            try:
+            with contextlib.suppress(Exception):
                 api.delete_item({"key": attachment_key})
-            except Exception:
-                pass
         return {
             "uploaded": [], "unchanged": [],
             "failed": [{"file": file_path.name, "attachment_key": attachment_key,
@@ -254,10 +255,8 @@ def upload_attachment_webdav(
         # Rollback: delete zip + attachment item
         storage.delete_file(attachment_key, "zip")
         if not reuse_key:
-            try:
+            with contextlib.suppress(Exception):
                 api.delete_item({"key": attachment_key})
-            except Exception:
-                pass
         return {
             "uploaded": [], "unchanged": [],
             "failed": [{"file": file_path.name, "attachment_key": attachment_key,

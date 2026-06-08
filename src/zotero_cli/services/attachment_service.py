@@ -5,13 +5,12 @@ based on profile config. Handles validation, rollback, and envelope formatting.
 """
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
-from zotero_cli.adapters.zotero_api import ZoteroAPI, _select_backend
 from zotero_cli.adapters.webdav_client import WebDAVStorage, upload_attachment_webdav
-from zotero_cli.models.attachment import AttachmentData, AttachmentServiceResult
+from zotero_cli.adapters.zotero_api import ZoteroAPI, _select_backend
+from zotero_cli.models.attachment import AttachmentServiceResult
 from zotero_cli.models.config import ProfileConfig
 from zotero_cli.models.errors import MutuallyExclusiveArgsError, UnsupportedLibraryTypeError
 
@@ -71,22 +70,21 @@ class AttachmentService:
             raise FileNotFoundCLIError(f"File not found: {file_path}")
 
         file_size = file_path.stat().st_size
-        md5_hex = ""
 
         try:
             if reuse_key:
-                tpl = self._api._zot.item_template("attachment", "imported_file")
+                tpl = self._api.item_template("attachment", "imported_file")
                 tpl["key"] = reuse_key
                 tpl["filename"] = str(file_path)
                 tpl["title"] = title or file_path.name
-                result = self._api._zot.upload_attachments([tpl], parentid=None)
+                result = self._api.upload_attachments([tpl], parentid=None)
             else:
                 if title:
-                    result = self._api._zot.attachment_both(
+                    result = self._api.attachment_both(
                         [(title, str(file_path))], parentid=parent_key,
                     )
                 else:
-                    result = self._api._zot.attachment_simple(
+                    result = self._api.attachment_simple(
                         [str(file_path)], parentid=parent_key,
                     )
             return _format_zfs_result(result, file_path.name, parent_key, file_size)
@@ -131,10 +129,11 @@ class AttachmentService:
 
         if self._backend == "webdav" and len(file_paths) >= 2:
             from concurrent.futures import ThreadPoolExecutor
+
             from zotero_cli.constants import DEFAULT_PARALLEL_UPLOADS
             with ThreadPoolExecutor(max_workers=DEFAULT_PARALLEL_UPLOADS) as pool:
                 futures = []
-                for fp, rk in zip(file_paths, keys_iter):
+                for fp, rk in zip(file_paths, keys_iter, strict=False):
                     f = pool.submit(
                         self.attach, parent_key, fp,
                         reuse_key=rk, force=force,
@@ -144,7 +143,7 @@ class AttachmentService:
                     r = f.result()
                     _merge_attach_result(r, all_uploaded, all_unchanged, all_failed, affected)
         else:
-            for fp, rk in zip(file_paths, keys_iter):
+            for fp, rk in zip(file_paths, keys_iter, strict=False):
                 r = self.attach(parent_key, fp, reuse_key=rk, force=force)
                 _merge_attach_result(r, all_uploaded, all_unchanged, all_failed, affected)
 

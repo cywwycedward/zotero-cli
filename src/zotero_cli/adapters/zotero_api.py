@@ -237,6 +237,44 @@ class ZoteroAPI:
         except zerr.PyZoteroError as e:
             raise _map_pyzotero_exception(e) from e
 
+    # -- Attachment methods (design §10.0.2.2) --
+
+    def attachment_simple(
+        self, files: list[str], parentid: str | None = None,
+    ) -> dict[str, Any]:
+        """Upload files via pyzotero.attachment_simple."""
+        try:
+            return self._zot.attachment_simple(files, parentid=parentid)  # type: ignore[no-any-return]
+        except zerr.PyZoteroError as e:
+            raise _map_pyzotero_exception(e) from e
+
+    def attachment_both(
+        self, files: list[tuple[str, str]], parentid: str | None = None,
+    ) -> dict[str, Any]:
+        """Upload files with custom titles via pyzotero.attachment_both."""
+        try:
+            return self._zot.attachment_both(files, parentid=parentid)  # type: ignore[no-any-return]
+        except zerr.PyZoteroError as e:
+            raise _map_pyzotero_exception(e) from e
+
+    def upload_attachments(
+        self, attachments: list[dict[str, Any]], parentid: str | None = None,
+    ) -> dict[str, Any]:
+        """Upload/re-upload attachments via pyzotero.upload_attachments."""
+        try:
+            return self._zot.upload_attachments(attachments, parentid=parentid)  # type: ignore[no-any-return]
+        except zerr.PyZoteroError as e:
+            raise _map_pyzotero_exception(e) from e
+
+    def item_template(
+        self, item_type: str, link_mode: str | None = None,
+    ) -> dict[str, Any]:
+        """Get an item template from pyzotero."""
+        try:
+            return self._zot.item_template(item_type, link_mode)  # type: ignore[no-any-return]
+        except zerr.PyZoteroError as e:
+            raise _map_pyzotero_exception(e) from e
+
     # -- Collections --
 
     def collections(self) -> list[PyzoteroResponse]:

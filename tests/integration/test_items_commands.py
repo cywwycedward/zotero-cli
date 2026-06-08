@@ -208,3 +208,11 @@ class TestItemsExport:
     def test_export_quiet_rejected(self, mocker, runner, tmp_profile) -> None:
         result = runner.invoke(app, ["--quiet", "items", "export", "--format", "bibtex"])
         assert result.exit_code == 64
+
+
+class TestItemsAttach:
+    def test_attach_command_exists(self, runner, tmp_profile) -> None:
+        """Verify items attach subcommand is registered and shows help."""
+        result = runner.invoke(app, ["items", "attach", "--help"])
+        assert result.exit_code == 0
+        assert "attach" in result.stdout.lower() or "Usage" in result.stdout

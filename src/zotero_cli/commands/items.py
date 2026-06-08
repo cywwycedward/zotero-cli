@@ -225,9 +225,17 @@ def create_item(
     collection: Annotated[
         str | None, typer.Option("--collection", help="Add to collection")
     ] = None,
+    attach: Annotated[
+        Path | None, typer.Option("--attach", help="Attach a PDF file")
+    ] = None,
+    attach_title: Annotated[
+        str | None, typer.Option("--attach-title", help="Attachment title")
+    ] = None,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Preview without creating")] = False,
 ) -> None:
-    """Create a new item."""
+    """Create a new item, optionally with an attachment."""
+    from zotero_cli.services.attachment_service import AttachmentService
+
     profile = _get_profile(ctx)
     import json as _json
 
@@ -247,6 +255,14 @@ def create_item(
         api = ZoteroAPI(profile)
         svc = ItemService(api)
         result = svc.create([payload])
+        # Upload attachment if --attach was provided
+        if attach is not None:
+            parent_key = result["meta_extra"]["affected_keys"][0]
+            att_svc = AttachmentService(profile)
+            att_result = att_svc.attach(
+                parent_key, attach, title=attach_title,
+            )
+            return att_result["data"], att_result["meta_extra"]
         return result["data"], result["meta_extra"]
 
     _invoke_write(
@@ -275,9 +291,17 @@ def update_item(
     json_patch: Annotated[
         str | None, typer.Option("--json-patch", help="JSON patch to merge")
     ] = None,
+    attach: Annotated[
+        Path | None, typer.Option("--attach", help="Attach a PDF file")
+    ] = None,
+    attach_title: Annotated[
+        str | None, typer.Option("--attach-title", help="Attachment title")
+    ] = None,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Preview without updating")] = False,
 ) -> None:
-    """Update an existing item."""
+    """Update an existing item, optionally adding an attachment."""
+    from zotero_cli.services.attachment_service import AttachmentService
+
     profile = _get_profile(ctx)
     import json as _json
 
@@ -296,8 +320,18 @@ def update_item(
     def action() -> tuple[Any, Any]:
         api = ZoteroAPI(profile)
         svc = ItemService(api)
-        result = svc.update(key, patch=patch)
-        return result["data"], result["meta_extra"]
+        if patch:
+            result = svc.update(key, patch=patch)
+            item_data, item_meta = result["data"], result["meta_extra"]
+        else:
+            item_data = {"successful": [{"index": 0, "key": key, "version": 0}],
+                         "unchanged": [], "failed": []}
+            item_meta = {"affected_keys": [key]}
+        if attach is not None:
+            att_svc = AttachmentService(profile)
+            att_result = att_svc.attach(key, attach, title=attach_title)
+            return att_result["data"], att_result["meta_extra"]
+        return item_data, item_meta
 
     _invoke_write(
         ctx,
@@ -331,6 +365,47 @@ def delete_item(
         "items.delete",
         action,
         args_for_audit={"keys": keys, "dry_run": dry_run},
+    )
+
+
+# ── attach ─────────────────────────────────────────────────────────────────
+
+
+@app.command("attach")
+def attach_file(
+    ctx: typer.Context,
+    key: Annotated[str, typer.Argument(help="Parent item key")],
+    file: Annotated[Path, typer.Argument(help="PDF file to attach")],
+    title: Annotated[
+        str | None, typer.Option("--title", help="Attachment title")
+    ] = None,
+    reuse_key: Annotated[
+        str | None, typer.Option("--reuse-key", help="Reuse existing attachment key")
+    ] = None,
+    force: Annotated[
+        bool, typer.Option("--force", help="Force reupload (WebDAV only)")
+    ] = False,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Preview without uploading")
+    ] = False,
+) -> None:
+    """Attach a file to an existing item."""
+    from zotero_cli.services.attachment_service import AttachmentService
+
+    profile = _get_profile(ctx)
+
+    def action() -> tuple[Any, Any]:
+        att_svc = AttachmentService(profile)
+        result = att_svc.attach(
+            key, file, reuse_key=reuse_key, force=force, title=title,
+        )
+        return result["data"], result["meta_extra"]
+
+    _invoke_write(
+        ctx,
+        "items.attach",
+        action,
+        args_for_audit={"key": key, "file": str(file), "reuse_key": reuse_key, "dry_run": dry_run},
     )
 
 
