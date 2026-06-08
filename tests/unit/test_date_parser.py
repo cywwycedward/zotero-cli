@@ -144,3 +144,32 @@ def test_whitespace_stripped() -> None:
 def test_range_with_spaces_around_dotdot() -> None:
     result = date_range_to_sql_bounds("2024-01 .. 2024-06")
     assert result == DateRange("2024-01-00", "2024-06-30")
+
+
+ALL_INVALID_INPUTS = [
+    "June 24",
+    "2024/06",
+    "24-06",
+    "2024-13",
+    "2024-00",
+    "2024-1",
+    "2024-002",
+    "2024-02-30",
+    "2023-02-29",
+    "2024-04-31",
+    "abc",
+    "",
+    "..2024..2025",
+]
+
+
+@pytest.mark.parametrize("s", ALL_INVALID_INPUTS)
+def test_invalid_inputs_raise(s: str) -> None:
+    with pytest.raises(InvalidDateFormatError):
+        date_range_to_sql_bounds(s)
+
+
+def test_hint_for_unrecognized_format() -> None:
+    with pytest.raises(InvalidDateFormatError) as exc_info:
+        date_range_to_sql_bounds("June 24")
+    assert "YYYY" in exc_info.value.hint
