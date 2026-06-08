@@ -1,4 +1,5 @@
 """Performance test: 1000 feed items + date filter < 300ms (DEVELOPMENT.md §9.5)."""
+
 from __future__ import annotations
 
 import time

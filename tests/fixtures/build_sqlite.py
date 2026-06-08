@@ -3,6 +3,7 @@
 Usage: uv run python tests/fixtures/build_sqlite.py
 Output: tests/fixtures/zotero_test.sqlite (overwritten)
 """
+
 import sqlite3
 from pathlib import Path
 

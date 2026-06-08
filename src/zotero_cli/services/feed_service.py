@@ -1,4 +1,5 @@
 """FeedService — coordinates SQLiteReader for RSS queries."""
+
 from __future__ import annotations
 
 from zotero_cli.adapters.sqlite_reader import SQLiteReader

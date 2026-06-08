@@ -1,4 +1,5 @@
 """Integration tests for feed queries using real zotero_test.sqlite fixture."""
+
 from __future__ import annotations
 
 from pathlib import Path

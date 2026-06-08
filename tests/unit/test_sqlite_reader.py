@@ -1,4 +1,5 @@
 """Unit tests for SQLiteReader — error paths and schema validation."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -38,9 +39,7 @@ class TestSchemaValidation:
         with pytest.raises(SqliteSchemaIncompatibleError):
             SQLiteReader(config)
 
-    def test_missing_feeditems_columns_raises_schema_incompatible(
-        self, tmp_path: Path
-    ) -> None:
+    def test_missing_feeditems_columns_raises_schema_incompatible(self, tmp_path: Path) -> None:
         db_path = tmp_path / "partial.sqlite"
         conn = sqlite3.connect(str(db_path))
         conn.executescript("""

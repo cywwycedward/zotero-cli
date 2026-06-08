@@ -1,4 +1,5 @@
 """Feed models for RSS query results (design §11.2)."""
+
 from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
@@ -6,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 class FeedSummary(BaseModel):
     """A single feed subscription (feeds list)."""
+
     model_config = ConfigDict(extra="forbid")
 
     feed_id: int = Field(alias="libraryID")
@@ -27,6 +29,7 @@ class FeedSummary(BaseModel):
 
 class FeedItemCreator(BaseModel):
     """A single creator for a feed item."""
+
     model_config = ConfigDict(extra="forbid")
 
     first_name: str = ""
@@ -37,6 +40,7 @@ class FeedItemCreator(BaseModel):
 
 class FeedItem(BaseModel):
     """A single feed item (feeds items query)."""
+
     model_config = ConfigDict(extra="forbid")
 
     feed_id: int

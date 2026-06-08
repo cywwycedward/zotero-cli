@@ -563,14 +563,14 @@ git worktree remove ../zotero-cli-webdav
 
 ### §9.5 阶段 5：RSS（SQLite）
 
-- [ ] `adapters/sqlite_reader.py`：`mode=ro&nolock=1` 连接 + schema 兼容性检测（设计 §11.6）+ 启动时缓存 fieldID
-- [ ] `services/feed_service.py`：list + items + date 过滤（SQL 端完成）+ `include_undated` 参数化（设计 §11.3.2）
-- [ ] `commands/feeds.py`：`list` / `show` / `items`，`feed-id` 整数参数（= `feeds.libraryID`）
-- [ ] `FeedItem` 模型含 `feed_id` 字段（设计 §11.2）
-- [ ] 集成测试用 `tests/fixtures/zotero_test.sqlite`（设计 §12.3 五条覆盖各种 date 格式）
-- [ ] 性能测试：1000 条 feed items + date 过滤 < 300ms（设计 §11.7）
-- [ ] 单元 + 集成测试齐全
-- [ ] 自检四项全过
+- [x] `adapters/sqlite_reader.py`：`mode=ro&nolock=1` 连接 + schema 兼容性检测（设计 §11.6）+ 启动时缓存 fieldID
+- [x] `services/feed_service.py`：list + items + date 过滤（SQL 端完成）+ `include_undated` 参数化（设计 §11.3.2）
+- [x] `commands/feeds.py`：`list` / `show` / `items`，`feed-id` 整数参数（= `feeds.libraryID`）
+- [x] `FeedItem` 模型含 `feed_id` 字段（设计 §11.2）
+- [x] 集成测试用 `tests/fixtures/zotero_test.sqlite`（设计 §12.3 五条覆盖各种 date 格式）
+- [x] 性能测试：1000 条 feed items + date 过滤 < 300ms（设计 §11.7）
+- [x] 单元 + 集成测试齐全（398 tests）
+- [x] 自检四项全过（ruff clean, ruff format clean, mypy strict 0 errors, 398 passed）
 
 ### §9.6 阶段 6：Agent 自省 + 收尾
 

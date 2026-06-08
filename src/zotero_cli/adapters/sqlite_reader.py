@@ -1,4 +1,5 @@
 """SQLiteReader — read-only access to zotero.sqlite (design §11.1)."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -37,9 +38,7 @@ class SQLiteReader:
 
     def _check_schema(self) -> None:
         """Verify required tables exist."""
-        cur = self._conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        )
+        cur = self._conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
         existing = {r[0] for r in cur.fetchall()}
         missing = REQUIRED_TABLES - existing
         if missing:
@@ -86,9 +85,7 @@ class SQLiteReader:
         return [dict(r) for r in cur.fetchall()]
 
     def feed_exists(self, feed_id: int) -> bool:
-        cur = self._conn.execute(
-            "SELECT 1 FROM feeds WHERE libraryID = ?", (feed_id,)
-        )
+        cur = self._conn.execute("SELECT 1 FROM feeds WHERE libraryID = ?", (feed_id,))
         return cur.fetchone() is not None
 
     def query_items(
@@ -141,10 +138,14 @@ class SQLiteReader:
         LIMIT ?
         """
         params = (
-            fid_title, fid_date, fid_url, fid_abstract,
+            fid_title,
+            fid_date,
+            fid_url,
+            fid_abstract,
             feed_id,
             1 if include_undated else 0,
-            date_start, date_end,
+            date_start,
+            date_end,
             limit,
         )
         cur = self._conn.execute(sql, params)

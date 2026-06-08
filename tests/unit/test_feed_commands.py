@@ -1,4 +1,5 @@
 """Unit tests for feed commands — focuses on --quiet, error paths, field filter."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -32,8 +33,11 @@ class TestFeedModelKeys:
 
     def test_feed_summary_dump_contains_key(self) -> None:
         summary = FeedSummary(
-            libraryID=10, name="Test", url="https://example.com",
-            total_count=5, unread_count=3,
+            libraryID=10,
+            name="Test",
+            url="https://example.com",
+            total_count=5,
+            unread_count=3,
         )
         d = summary.model_dump()
         assert "key" in d
@@ -69,8 +73,11 @@ class TestFeedsListCommand:
         mock_svc = MagicMock()
         mock_svc.list_feeds.return_value = [
             FeedSummary(
-                libraryID=10, name="Test", url="https://example.com",
-                total_count=5, unread_count=3,
+                libraryID=10,
+                name="Test",
+                url="https://example.com",
+                total_count=5,
+                unread_count=3,
             ),
         ]
         mock_get_svc.return_value = mock_svc
@@ -83,8 +90,11 @@ class TestFeedsListCommand:
         mock_svc = MagicMock()
         mock_svc.list_feeds.return_value = [
             FeedSummary(
-                libraryID=10, name="Test", url="https://example.com",
-                total_count=5, unread_count=3,
+                libraryID=10,
+                name="Test",
+                url="https://example.com",
+                total_count=5,
+                unread_count=3,
             ),
         ]
         mock_get_svc.return_value = mock_svc
@@ -107,8 +117,11 @@ class TestFeedsShowCommand:
         mock_svc = MagicMock()
         mock_svc.list_feeds.return_value = [
             FeedSummary(
-                libraryID=10, name="Test", url="https://example.com",
-                total_count=5, unread_count=3,
+                libraryID=10,
+                name="Test",
+                url="https://example.com",
+                total_count=5,
+                unread_count=3,
             ),
         ]
         mock_get_svc.return_value = mock_svc
@@ -129,7 +142,9 @@ class TestFeedsItemsCommand:
     @patch("zotero_cli.commands.feeds.SQLiteReader")
     @patch("zotero_cli.commands.feeds.load_config")
     def test_items_success(
-        self, mock_load_config: MagicMock, mock_reader_cls: MagicMock,
+        self,
+        mock_load_config: MagicMock,
+        mock_reader_cls: MagicMock,
         mock_svc_cls: MagicMock,
     ) -> None:
         mock_profile = MagicMock()
@@ -147,7 +162,9 @@ class TestFeedsItemsCommand:
     @patch("zotero_cli.commands.feeds.SQLiteReader")
     @patch("zotero_cli.commands.feeds.load_config")
     def test_items_not_found(
-        self, mock_load_config: MagicMock, mock_reader_cls: MagicMock,
+        self,
+        mock_load_config: MagicMock,
+        mock_reader_cls: MagicMock,
         mock_svc_cls: MagicMock,
     ) -> None:
         mock_profile = MagicMock()
@@ -163,7 +180,9 @@ class TestFeedsItemsCommand:
     @patch("zotero_cli.commands.feeds.SQLiteReader")
     @patch("zotero_cli.commands.feeds.load_config")
     def test_items_all_fields(
-        self, mock_load_config: MagicMock, mock_reader_cls: MagicMock,
+        self,
+        mock_load_config: MagicMock,
+        mock_reader_cls: MagicMock,
         mock_svc_cls: MagicMock,
     ) -> None:
         mock_profile = MagicMock()
@@ -171,7 +190,9 @@ class TestFeedsItemsCommand:
         mock_svc = MagicMock()
         mock_svc.list_items.return_value = [
             FeedItem(
-                feed_id=10, item_id=1001, title="Article",
+                feed_id=10,
+                item_id=1001,
+                title="Article",
                 url="https://example.com",
             ),
         ]
