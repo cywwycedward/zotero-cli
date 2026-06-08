@@ -8,15 +8,13 @@ Per design §9.2: every error code maps to exactly one subclass.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Final, Literal
 
-from zotero_cli.utils.exit_codes import (
-    EXIT_AUTH_ERROR,
-    EXIT_LOCAL_ERROR,
-    EXIT_NETWORK_ERROR,
-    EXIT_USAGE_ERROR,
-    EXIT_USER_ERROR,
-)
+EXIT_USER_ERROR: Final[int] = 1
+EXIT_NETWORK_ERROR: Final[int] = 2
+EXIT_AUTH_ERROR: Final[int] = 3
+EXIT_LOCAL_ERROR: Final[int] = 4
+EXIT_USAGE_ERROR: Final[int] = 64
 
 ErrorCategory = Literal[
     "user_error",

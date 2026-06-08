@@ -24,6 +24,12 @@ class TestRouter:
         with pytest.raises(MutuallyExclusiveArgsError):
             render(envelope=env, mode=OutputMode.KV, json_mode=True, quiet=True)
 
+    def test_json_mode_enum_renders_envelope_json(self) -> None:
+        env = Envelope.success(data={"key": "ABC"}, command="schema", elapsed_ms=100)
+        result = render(envelope=env, mode=OutputMode.JSON, json_mode=False, quiet=False)
+        expected = env.model_dump_json(indent=2) + "\n"
+        assert result == expected
+
 
 class TestKvFormat:
     """KV output mode tests."""
@@ -117,7 +123,12 @@ class TestTree:
         }
         env = Envelope.success(data=data, command="collections.tree", elapsed_ms=100)
         result = render(envelope=env, mode=OutputMode.TREE, json_mode=False, quiet=False)
-        expected = "Root\n├── Child1\n│   └── Grandchild\n└── Child2\n"
+        expected = (
+            "Root [ROOT] (0 items)\n"
+            "├── Child1 [C1] (5 items)\n"
+            "│   └── Grandchild [GC1] (2 items)\n"
+            "└── Child2 [C2] (3 items)\n"
+        )
         assert result == expected
 
 
@@ -125,7 +136,10 @@ class TestSummary:
     """SUMMARY output mode tests."""
 
     def test_create_success(self) -> None:
-        data = {"successful": ["ABC", "DEF"], "failed": []}
+        data = {
+            "successful": [{"key": "ABC", "version": 1}, {"key": "DEF", "version": 1}],
+            "failed": [],
+        }
         env = Envelope.success(data=data, command="items.create", elapsed_ms=100)
         result = render(envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False)
         expected = "✓ Created 2 items:\n  ABC, DEF\n"
@@ -133,7 +147,7 @@ class TestSummary:
 
     def test_with_failures(self) -> None:
         data = {
-            "successful": ["ABC"],
+            "successful": [{"key": "ABC", "version": 1}],
             "failed": [{"code": "INVALID_FIELD", "message": "Title is required"}],
         }
         env = Envelope.success(data=data, command="items.create", elapsed_ms=100)
@@ -144,19 +158,19 @@ class TestSummary:
         assert result == expected
 
     def test_update_verb(self) -> None:
-        data = {"successful": ["XYZ"], "failed": []}
+        data = {"successful": [{"key": "XYZ", "version": 2}], "failed": []}
         env = Envelope.success(data=data, command="items.update", elapsed_ms=100)
         result = render(envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False)
         assert "Updated" in result
 
     def test_delete_verb(self) -> None:
-        data = {"successful": ["XYZ"], "failed": []}
+        data = {"successful": [{"key": "XYZ", "version": 3}], "failed": []}
         env = Envelope.success(data=data, command="items.delete", elapsed_ms=100)
         result = render(envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False)
         assert "Deleted" in result
 
     def test_attach_verb(self) -> None:
-        data = {"successful": ["XYZ"], "failed": []}
+        data = {"successful": [{"key": "XYZ", "version": 1}], "failed": []}
         env = Envelope.success(data=data, command="items.attach", elapsed_ms=100)
         result = render(envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False)
         assert "Attached" in result
@@ -188,10 +202,15 @@ class TestYaml:
 
     def test_quiet_unsupported_for_yaml(self) -> None:
         data = {"key": "ABC", "title": "Hello"}
-        env = Envelope.success(data=data, command="items.show", elapsed_ms=100)
-        result = render(envelope=env, mode=OutputMode.YAML, json_mode=False, quiet=True)
-        # quiet mode returns key output, not YAML
-        assert result == "ABC\n"
+        env = Envelope.success(data=data, command="config.show", elapsed_ms=100)
+        with pytest.raises(MutuallyExclusiveArgsError):
+            render(envelope=env, mode=OutputMode.YAML, json_mode=False, quiet=True)
+
+    def test_quiet_unsupported_for_json_mode(self) -> None:
+        data = {"key": "ABC"}
+        env = Envelope.success(data=data, command="schema", elapsed_ms=100)
+        with pytest.raises(MutuallyExclusiveArgsError):
+            render(envelope=env, mode=OutputMode.JSON, json_mode=False, quiet=True)
 
 
 class TestFieldFilter:
@@ -355,6 +374,26 @@ class TestQuiet:
         )
         result = render(envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=True)
         assert result == "TAG1\n"
+
+    def test_collections_add_items_affected_keys(self) -> None:
+        env = Envelope.success(
+            data={},
+            command="collections.add_items",
+            elapsed_ms=100,
+            meta_extra={"affected_keys": ["COLL1"]},
+        )
+        result = render(envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=True)
+        assert result == "COLL1\n"
+
+    def test_collections_remove_items_affected_keys(self) -> None:
+        env = Envelope.success(
+            data={},
+            command="collections.remove_items",
+            elapsed_ms=100,
+            meta_extra={"affected_keys": ["COLL2"]},
+        )
+        result = render(envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=True)
+        assert result == "COLL2\n"
 
 
 class TestDefaultError:

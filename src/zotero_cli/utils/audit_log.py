@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from zotero_cli.constants import AUDIT_LOG_ROTATE_BYTES
+from zotero_cli.models.errors import AuditLogWriteFailedError
 
 _API_KEY_NAMES: frozenset[str] = frozenset({"api_key", "apiKey", "apikey", "api-key"})
 _REDACT_NAMES: frozenset[str] = frozenset({"password", "passwd", "secret"})
@@ -40,22 +41,29 @@ def write_entry(*, log_path: Path, entry: AuditEntry) -> None:
     3. Omit ``None`` values (except ``args`` and ``affected_keys`` which always appear).
     4. Write one JSON line (append, UTF-8).
     """
-    log_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    data = asdict(entry)
-    data["args"] = _mask_args(data["args"])
+        data = asdict(entry)
+        data["args"] = _mask_args(data["args"])
 
-    _maybe_rotate(log_path, entry.timestamp)
+        _maybe_rotate(log_path, entry.timestamp)
 
-    # Drop None values, but keep args and affected_keys even if empty
-    filtered = {}
-    for key, value in data.items():
-        if value is not None or key in ("args", "affected_keys"):
-            filtered[key] = value
+        # Drop None values, but keep args and affected_keys even if empty
+        filtered = {}
+        for key, value in data.items():
+            if value is not None or key in ("args", "affected_keys"):
+                filtered[key] = value
 
-    with log_path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(filtered, ensure_ascii=False, sort_keys=True) + "\n")
-    log_path.chmod(0o600)
+        with log_path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(filtered, ensure_ascii=False, sort_keys=True) + "\n")
+        log_path.chmod(0o600)
+    except OSError as exc:
+        raise AuditLogWriteFailedError(
+            f"Failed to write audit log: {exc}",
+            hint=f"Check permissions on {log_path.parent}",
+            cause=exc,
+        ) from exc
 
 
 def _mask_args(obj: object) -> object:

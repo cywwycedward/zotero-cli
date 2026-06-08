@@ -38,13 +38,23 @@ def render(
             hint="Use one of --json or --quiet, not both",
         )
 
-    if json_mode:
+    if json_mode or mode == OutputMode.JSON:
+        if quiet:
+            raise MutuallyExclusiveArgsError(
+                f"--quiet is not supported with {mode.value} output mode",
+                hint="Remove --quiet for this command",
+            )
         return envelope.model_dump_json(indent=2) + "\n"
 
     if not envelope.ok:
         return _render_default_error(envelope)
 
     if quiet:
+        if mode in (OutputMode.YAML, OutputMode.JSON):
+            raise MutuallyExclusiveArgsError(
+                f"--quiet is not supported with {mode.value} output mode",
+                hint="Remove --quiet for this command",
+            )
         return _render_quiet(envelope)
 
     data = envelope.data
@@ -104,19 +114,31 @@ def _render_tree(data: Any) -> str:
     """Render a nested dict with name/key/children as a unicode tree."""
     lines: list[str] = []
 
+    def _format_node(node: dict[str, Any]) -> str:
+        name = node.get("name", "")
+        key = node.get("key", "")
+        items_count = node.get("items_count")
+        parts = [name]
+        if key:
+            parts.append(f"[{key}]")
+        if items_count is not None:
+            item_word = "item" if items_count == 1 else "items"
+            parts.append(f"({items_count} {item_word})")
+        return " ".join(parts)
+
     def _build(node: dict[str, Any], prefix: str) -> None:
         children = node.get("children", [])
         for i, child in enumerate(children):
             is_last = i == len(children) - 1
             connector = "└── " if is_last else "├── "
-            child_name = child.get("name", "")
-            lines.append(prefix + connector + child_name)
+            lines.append(prefix + connector + _format_node(child))
             _build(child, prefix + ("    " if is_last else "│   "))
 
-    root_name = data.get("name", "") if isinstance(data, dict) else str(data)
-    lines.append(root_name)
     if isinstance(data, dict):
+        lines.append(_format_node(data))
         _build(data, "")
+    else:
+        lines.append(str(data))
     return "\n".join(lines) + "\n"
 
 
@@ -134,9 +156,11 @@ def _render_summary(data: Any, command: str) -> str:
     if successful:
         count = len(successful)
         item_word = "item" if count == 1 else "items"
-        items_str = ", ".join(str(s) for s in successful)
+        keys = ", ".join(
+            s["key"] if isinstance(s, dict) else str(s) for s in successful
+        )
         lines.append(f"✓ {verb} {count} {item_word}:")
-        lines.append(f"  {items_str}")
+        lines.append(f"  {keys}")
 
     if failed:
         if successful:
@@ -257,6 +281,8 @@ def _is_write_operation(command: str) -> bool:
         "collections.create",
         "collections.update",
         "collections.delete",
+        "collections.add_items",
+        "collections.remove_items",
         "tags.add",
         "tags.remove",
         "tags.rename",

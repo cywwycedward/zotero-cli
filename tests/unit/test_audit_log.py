@@ -9,6 +9,7 @@ from typing import cast
 import pytest
 
 import zotero_cli.utils.audit_log as audit_log_module
+from zotero_cli.models.errors import AuditLogWriteFailedError
 from zotero_cli.utils.audit_log import AuditEntry, _mask_args, write_entry
 
 # ── Step 1: Basic JSONL append writer ──────────────────────────────────────
@@ -191,3 +192,26 @@ def test_archive_name_uses_entry_year_month(
     archives = list(tmp_path.glob("audit.log.*.gz"))
     assert len(archives) == 1
     assert archives[0].name == "audit.log.2026-12.gz"
+
+
+# ── Step 4: I/O errors wrapped as AuditLogWriteFailedError ────────────────
+
+
+def test_io_error_raises_audit_log_write_failed(tmp_path: Path) -> None:
+    log = tmp_path / "readonly" / "audit.log"
+    log.parent.mkdir()
+    log.parent.chmod(0o444)
+    entry = AuditEntry(
+        timestamp="2026-06-08T12:00:00Z",
+        profile="default",
+        command="list-items",
+        args={},
+        result="success",
+        affected_keys=[],
+        elapsed_ms=0,
+    )
+    with pytest.raises(AuditLogWriteFailedError) as exc_info:
+        write_entry(log_path=log, entry=entry)
+    assert exc_info.value.cause is not None
+    # Restore permissions for cleanup
+    log.parent.chmod(0o755)
