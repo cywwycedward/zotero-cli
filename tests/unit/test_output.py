@@ -1,4 +1,4 @@
-"""Tests for the output renderer module — kv, kv-list, tree, summary, yaml."""
+"""Tests for the output renderer module."""
 from __future__ import annotations
 
 import pytest
@@ -209,6 +209,15 @@ class TestYaml:
         assert parsed["webdav"]["password"] == "****"
         assert parsed["webdav"]["url"] == "http://example.com"
 
+    def test_quiet_unsupported_for_yaml(self) -> None:
+        data = {"key": "ABC", "title": "Hello"}
+        env = Envelope.success(data=data, command="items.show", elapsed_ms=100)
+        result = render(
+            envelope=env, mode=OutputMode.YAML, json_mode=False, quiet=True
+        )
+        # quiet mode returns key output, not YAML
+        assert result == "ABC\n"
+
 
 class TestFieldFilter:
     """Field filter application tests."""
@@ -287,6 +296,108 @@ class TestFieldFilter:
         assert result == "key: ABC\n\nkey: DEF\n"
         assert "title" not in result
         assert "date" not in result
+
+
+class TestQuiet:
+    """Quiet mode rendering tests."""
+
+    def test_kv_list_outputs_keys_one_per_line(self) -> None:
+        data = [{"key": "ABC", "title": "First"}, {"key": "DEF", "title": "Second"}]
+        env = Envelope.success(data=data, command="items.list", elapsed_ms=100)
+        result = render(
+            envelope=env, mode=OutputMode.KV_LIST, json_mode=False, quiet=True
+        )
+        assert result == "ABC\nDEF\n"
+
+    def test_kv_single_outputs_one_key(self) -> None:
+        data = {"key": "ABC", "title": "Hello"}
+        env = Envelope.success(data=data, command="items.show", elapsed_ms=100)
+        result = render(
+            envelope=env, mode=OutputMode.KV, json_mode=False, quiet=True
+        )
+        assert result == "ABC\n"
+
+    def test_summary_uses_affected_keys(self) -> None:
+        env = Envelope.success(
+            data={"successful": [], "failed": []},
+            command="items.create",
+            elapsed_ms=100,
+            meta_extra={"affected_keys": ["KEY1", "KEY2", "KEY3"]},
+        )
+        result = render(
+            envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=True
+        )
+        assert result == "KEY1\nKEY2\nKEY3\n"
+
+    def test_summary_empty_affected_keys_outputs_zero_bytes(self) -> None:
+        env = Envelope.success(
+            data={"successful": [], "failed": []},
+            command="items.create",
+            elapsed_ms=100,
+            meta_extra={"affected_keys": []},
+        )
+        result = render(
+            envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=True
+        )
+        assert result == ""
+
+    def test_tree_outputs_root_and_children_keys(self) -> None:
+        data = {
+            "key": "ROOT",
+            "name": "Root",
+            "items_count": 0,
+            "children": [
+                {"key": "C1", "name": "Child1", "items_count": 5, "children": []},
+                {"key": "C2", "name": "Child2", "items_count": 3, "children": []},
+            ],
+        }
+        env = Envelope.success(data=data, command="collections.tree", elapsed_ms=100)
+        result = render(
+            envelope=env, mode=OutputMode.TREE, json_mode=False, quiet=True
+        )
+        assert result == "ROOT\nC1\nC2\n"
+
+    def test_empty_list_quiet_returns_empty(self) -> None:
+        env = Envelope.success(data=[], command="items.list", elapsed_ms=100)
+        result = render(
+            envelope=env, mode=OutputMode.KV_LIST, json_mode=False, quiet=True
+        )
+        assert result == ""
+
+    def test_write_no_affected_keys_returns_empty(self) -> None:
+        env = Envelope.success(
+            data={"successful": ["ABC"]},
+            command="items.create",
+            elapsed_ms=100,
+        )
+        result = render(
+            envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=True
+        )
+        assert result == ""
+
+    def test_collections_update_affected_keys(self) -> None:
+        env = Envelope.success(
+            data={},
+            command="collections.update",
+            elapsed_ms=100,
+            meta_extra={"affected_keys": ["COL1", "COL2"]},
+        )
+        result = render(
+            envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=True
+        )
+        assert result == "COL1\nCOL2\n"
+
+    def test_tags_delete_affected_keys(self) -> None:
+        env = Envelope.success(
+            data={},
+            command="tags.delete",
+            elapsed_ms=100,
+            meta_extra={"affected_keys": ["TAG1"]},
+        )
+        result = render(
+            envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=True
+        )
+        assert result == "TAG1\n"
 
 
 class TestDefaultError:

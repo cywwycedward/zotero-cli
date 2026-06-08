@@ -44,7 +44,7 @@ def render(
         return _render_default_error(envelope)
 
     if quiet:
-        return ""
+        return _render_quiet(envelope)
 
     data = envelope.data
 
@@ -173,6 +173,38 @@ def _render_default_error(envelope: Envelope) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _render_quiet(envelope: Envelope) -> str:
+    """Render minimal key-only output for scripting."""
+    data = envelope.data
+    command = envelope.meta.command
+
+    # Write operations: output affected_keys from meta
+    if _is_write_operation(command):
+        affected = getattr(envelope.meta, "affected_keys", None)
+        if affected is None:
+            return ""
+        if not affected:
+            return ""
+        return "\n".join(str(k) for k in affected) + "\n"
+
+    # List data: output each item's key
+    if isinstance(data, list):
+        if not data:
+            return ""
+        return "\n".join(str(item["key"]) for item in data) + "\n"
+
+    # Dict with children (tree data): collect keys from tree
+    if isinstance(data, dict) and "children" in data:
+        keys = _collect_tree_keys(data)
+        return "\n".join(keys) + "\n"
+
+    # Single dict: output its key
+    if isinstance(data, dict) and "key" in data:
+        return str(data["key"]) + "\n"
+
+    return ""
+
+
 # -- Helpers ---------------------------------------------------------------------------
 
 
@@ -212,3 +244,31 @@ def _determine_verb(command: str) -> str:
         if command.startswith(prefix):
             return verb
     return "Processed"
+
+
+def _is_write_operation(command: str) -> bool:
+    """Check if the command is a write operation that sets affected_keys."""
+    write_prefixes = [
+        "items.create",
+        "items.update",
+        "items.delete",
+        "items.attach",
+        "collections.create",
+        "collections.update",
+        "collections.delete",
+        "tags.add",
+        "tags.remove",
+        "tags.rename",
+        "tags.delete",
+    ]
+    return any(command.startswith(p) for p in write_prefixes)
+
+
+def _collect_tree_keys(data: dict[str, Any]) -> list[str]:
+    """Collect all 'key' values from a tree structure."""
+    keys: list[str] = []
+    if "key" in data:
+        keys.append(str(data["key"]))
+    for child in data.get("children", []):
+        keys.extend(_collect_tree_keys(child))
+    return keys
