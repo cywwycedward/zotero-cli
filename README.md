@@ -1,13 +1,26 @@
 # zotero-cli
 
+[![CI](https://github.com/cywwycedward/zotero-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/cywwycedward/zotero-cli/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Single-user, agent-first CLI for Zotero — literature management, PDF upload, RSS query.
+
+## Installation
+
+```bash
+# From PyPI after the first release is published
+uv tool install zotero
+
+# From source
+git clone https://github.com/cywwycedward/zotero-cli.git
+cd zotero-cli
+uv sync --extra dev
+uv run zotero-cli --help
+```
 
 ## Quick Start
 
 ```bash
-# Install
-uv sync
-
 # Initialize config
 zotero-cli config init
 
@@ -76,6 +89,7 @@ uv sync --extra dev
 uv run ruff check src tests
 uv run mypy src
 uv run pytest --cov=src
+uv build
 ```
 
-See `DEVELOPMENT.md` for full development guide.
+See `DEVELOPMENT.md` for the full development guide and `CONTRIBUTING.md` for contribution expectations.

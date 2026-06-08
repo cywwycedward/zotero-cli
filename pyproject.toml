@@ -1,9 +1,25 @@
 [project]
-name = "zotero-cli"
+name = "zotero"
 version = "0.1.0"
 description = "Single-user, agent-first CLI for Zotero (literature management, PDF upload, RSS query)"
 requires-python = ">=3.11"
 readme = "README.md"
+authors = [{ name = "cywwycatari" }]
+license = { file = "LICENSE" }
+keywords = ["zotero", "cli", "bibliography", "research", "rss", "webdav"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
 dependencies = [
     "typer[all]>=0.12.0",
     "pyzotero>=1.5.0",
@@ -31,6 +47,11 @@ webdav-test = [
 
 [project.scripts]
 zotero-cli = "zotero_cli.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/cywwycedward/zotero-cli"
+Repository = "https://github.com/cywwycedward/zotero-cli"
+Issues = "https://github.com/cywwycedward/zotero-cli/issues"
 
 [build-system]
 requires = ["hatchling"]
@@ -73,4 +94,3 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
 ]
-

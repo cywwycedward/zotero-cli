@@ -15,7 +15,9 @@ htmlcov/
 
 # Project artifacts (DEVELOPMENT.md §10.5)
 *.pdf
+!tests/fixtures/sample_pdf.pdf
 *.sqlite
+!tests/fixtures/zotero_test.sqlite
 *.sqlite-journal
 audit.log*
 

@@ -1260,7 +1260,7 @@ wheels = [
 ]
 
 [[package]]
-name = "zotero-cli"
+name = "zotero"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
