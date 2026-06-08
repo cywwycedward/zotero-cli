@@ -168,3 +168,72 @@ class TestSelectBackend:
             webdav={"url": "https://x", "username": "u", "password": "p"},
         )  # type: ignore[call-arg]
         assert _select_backend(profile) == "webdav"
+
+
+# ── _normalize_batch_result (real Zotero API format) ─────────────────────
+
+
+class TestNormalizeBatchResult:
+    """Test against real Zotero Web API response format.
+
+    Zotero returns {"success": {"0": "KEY"}, "unchanged": {}, "failed": {}},
+    NOT {"successful": [...]}.
+    """
+
+    def _normalize(self, result, payloads):
+        from zotero_cli.adapters.zotero_api import _normalize_batch_result
+
+        return _normalize_batch_result(result, payloads)
+
+    def test_single_create_success(self) -> None:
+        api_response = {
+            "success": {"0": "ABCD1234"},
+            "unchanged": {},
+            "failed": {},
+        }
+        payloads = [{"itemType": "journalArticle", "title": "Test"}]
+        result = self._normalize(api_response, payloads)
+        assert len(result["successful"]) == 1
+        assert result["successful"][0]["key"] == "ABCD1234"
+        assert result["successful"][0]["index"] == 0
+
+    def test_multi_create_success(self) -> None:
+        api_response = {
+            "success": {"0": "KEY1", "1": "KEY2"},
+            "unchanged": {},
+            "failed": {},
+        }
+        payloads = [
+            {"itemType": "journalArticle", "title": "A"},
+            {"itemType": "note", "title": "B"},
+        ]
+        result = self._normalize(api_response, payloads)
+        assert len(result["successful"]) == 2
+        assert result["successful"][0]["key"] == "KEY1"
+        assert result["successful"][1]["key"] == "KEY2"
+
+    def test_partial_failure(self) -> None:
+        api_response = {
+            "success": {"0": "KEY1"},
+            "unchanged": {},
+            "failed": {"1": {"code": 400, "message": "Bad item type"}},
+        }
+        payloads = [
+            {"itemType": "journalArticle", "title": "Good"},
+            {"itemType": "badType", "title": "Bad"},
+        ]
+        result = self._normalize(api_response, payloads)
+        assert len(result["successful"]) == 1
+        assert len(result["failed"]) == 1
+        assert result["successful"][0]["key"] == "KEY1"
+
+    def test_all_failed(self) -> None:
+        api_response = {
+            "success": {},
+            "unchanged": {},
+            "failed": {"0": {"code": 400, "message": "Invalid"}},
+        }
+        payloads = [{"itemType": "bad"}]
+        result = self._normalize(api_response, payloads)
+        assert len(result["successful"]) == 0
+        assert len(result["failed"]) == 1

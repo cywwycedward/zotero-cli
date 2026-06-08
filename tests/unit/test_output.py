@@ -193,6 +193,22 @@ class TestSummary:
         result = render(envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False)
         assert "Attached" in result
 
+    def test_attach_with_backend_fields(self) -> None:
+        """Attachment results include backend + extra fields; summary still works."""
+        data = {
+            "backend": "zfs",
+            "successful": [
+                {"key": "ATT1", "file": "paper.pdf", "attachment_key": "ATT1",
+                 "parent_item_key": "P1", "size_bytes": 1024},
+            ],
+            "unchanged": [],
+            "failed": [],
+        }
+        env = Envelope.success(data=data, command="items.attach", elapsed_ms=50)
+        result = render(envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False)
+        assert "Attached" in result
+        assert "ATT1" in result
+
 
 class TestYaml:
     """YAML output mode tests."""

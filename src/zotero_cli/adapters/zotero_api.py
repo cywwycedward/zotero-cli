@@ -382,15 +382,16 @@ def _normalize_batch_result(
         "failed": [],
     }
 
-    successful = result.get("successful", {})
+    successful = result.get("success", {})
     unchanged = result.get("unchanged", {})
     failed = result.get("failed", {})
 
     for idx, payload in enumerate(payloads):
+        str_idx = str(idx)
         key = payload.get("key", "")
 
-        if idx in successful or key in successful:
-            entry_key = successful.get(idx) or successful.get(key, "")
+        if str_idx in successful or key in successful:
+            entry_key = successful.get(str_idx) or successful.get(key, "")
             normalized["successful"].append(
                 {
                     "index": idx,
@@ -398,10 +399,11 @@ def _normalize_batch_result(
                     "version": 0,
                 }
             )
-        elif unchanged and key in unchanged:
-            normalized["unchanged"].append({"index": idx, "key": key})
-        elif failed and key in failed:
-            fail_info = failed[key] if isinstance(failed, dict) else str(failed)
+        elif unchanged and (str_idx in unchanged or key in unchanged):
+            resolved_key = unchanged.get(str_idx) or unchanged.get(key, key)
+            normalized["unchanged"].append({"index": idx, "key": str(resolved_key)})
+        elif failed and (str_idx in failed or key in failed):
+            fail_info = failed.get(str_idx) or failed.get(key)
             normalized["failed"].append(
                 {
                     "index": idx,

@@ -257,12 +257,22 @@ def create_item(
         result = svc.create([payload])
         # Upload attachment if --attach was provided
         if attach is not None:
-            parent_key = result["meta_extra"]["affected_keys"][0]
+            affected = result["meta_extra"].get("affected_keys", [])
+            if not affected:
+                raise CLIError(
+                    "Item created but server returned no item key; cannot attach file",
+                    hint="Re-run without --attach and attach manually",
+                )
+            parent_key = affected[0]
             att_svc = AttachmentService(profile)
             att_result = att_svc.attach(
                 parent_key, attach, title=attach_title,
             )
-            return att_result["data"], att_result["meta_extra"]
+            # Combine parent create + attachment results
+            att_keys = att_result["meta_extra"].get("affected_keys", [])
+            combined_data = result["data"]
+            combined_data["successful"].extend(att_result["data"].get("successful", []))
+            return combined_data, {"affected_keys": affected + att_keys}
         return result["data"], result["meta_extra"]
 
     _invoke_write(

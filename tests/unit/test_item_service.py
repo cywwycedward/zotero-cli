@@ -114,3 +114,51 @@ class TestDelete:
         result = svc.delete(["A", "B"])
         assert len(result["data"]["successful"]) == 2
         assert result["meta_extra"]["affected_keys"] == ["A", "B"]
+
+
+class TestFlattenItem:
+    def test_nested_pyzotero_response_is_flattened(self, svc, mock_api) -> None:
+        mock_api.items_top.return_value = [{
+            "key": "ABC",
+            "version": 5,
+            "data": {
+                "key": "ABC",
+                "title": "Nested Paper",
+                "itemType": "journalArticle",
+                "creators": [{"firstName": "A", "lastName": "B"}],
+                "date": "2026",
+                "tags": [{"tag": "test"}],
+            },
+        }]
+        mock_api.count_items.return_value = 1
+        mock_api.library_id = "123"
+        mock_api.last_modified_version.return_value = 1
+
+        result = svc.list(limit=10)
+        item = result["data"][0]
+        assert item["key"] == "ABC"
+        assert item["title"] == "Nested Paper"
+        assert item["itemType"] == "journalArticle"
+        assert item["creators"] == [{"firstName": "A", "lastName": "B"}]
+
+    def test_flat_dict_passes_through(self, svc, mock_api) -> None:
+        mock_api.items_top.return_value = [{"key": "X", "title": "Flat"}]
+        mock_api.count_items.return_value = 1
+        mock_api.library_id = "123"
+        mock_api.last_modified_version.return_value = 1
+
+        result = svc.list()
+        item = result["data"][0]
+        assert item["key"] == "X"
+        assert item["title"] == "Flat"
+
+    def test_search_also_flattens(self, svc, mock_api) -> None:
+        mock_api.search_items.return_value = [{
+            "key": "S1",
+            "data": {"key": "S1", "title": "Search Result"},
+        }]
+        mock_api.library_id = "123"
+        mock_api.last_modified_version.return_value = 1
+
+        result = svc.search("query")
+        assert result["data"][0]["title"] == "Search Result"

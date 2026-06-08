@@ -109,7 +109,7 @@ class WebDAVStorage:
         """Upload a .zip file to <storage_path>/<key>.zip."""
         path = self._full_path(f"{key}.zip")
         try:
-            self._client.upload_from(path, zip_data, overwrite=True)
+            self._client.upload_fileobj(BytesIO(zip_data), path, overwrite=True)
         except Exception as e:
             raise WebdavConnectionError(
                 f"Failed to upload zip for {key}: {e}", cause=e,
@@ -119,7 +119,7 @@ class WebDAVStorage:
         """Upload a .prop file to <storage_path>/<key>.prop."""
         path = self._full_path(f"{key}.prop")
         try:
-            self._client.upload_from(path, prop_data, overwrite=True)
+            self._client.upload_fileobj(BytesIO(prop_data), path, overwrite=True)
         except Exception as e:
             raise WebdavConnectionError(
                 f"Failed to upload prop for {key}: {e}", cause=e,
@@ -156,6 +156,7 @@ def upload_attachment_webdav(
     *,
     reuse_key: str | None = None,
     force: bool = False,
+    title: str | None = None,
 ) -> dict[str, Any]:
     """Full 6-step WebDAV upload flow (design §10.2).
 
@@ -196,7 +197,7 @@ def upload_attachment_webdav(
             result = api.create_items([{
                 "itemType": "attachment",
                 "linkMode": "imported_file",
-                "title": file_path.name,
+                "title": title or file_path.name,
                 "parentItem": parent_key,
                 "filename": file_path.name,
                 "md5": "",

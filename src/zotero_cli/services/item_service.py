@@ -41,7 +41,7 @@ class ItemService:
         )
         total = self._api.count_items(collection=collection, tag=tag)
         return {
-            "data": items,
+            "data": [_flatten_item(i) for i in items],
             "meta_extra": {
                 "count": len(items),
                 "total": total,
@@ -62,7 +62,7 @@ class ItemService:
     ) -> ListServiceResult:
         items = self._api.search_items(query, limit=limit, start=start)
         return {
-            "data": items,
+            "data": [_flatten_item(i) for i in items],
             "meta_extra": {
                 "count": len(items),
                 "total": len(items),
@@ -147,3 +147,17 @@ class ItemService:
             },
             "meta_extra": {"affected_keys": [s["key"] for s in successful]},
         }
+
+
+def _flatten_item(item: dict[str, Any]) -> dict[str, Any]:
+    """Merge item['data'] fields to top level for display.
+
+    Pyzotero returns {"key":"X","data":{"title":"...","creators":[...],...},...}.
+    Field filters operate on top-level keys, so we need title/creators/etc at top level.
+    Already-flat dicts (e.g. from mocks) pass through unchanged.
+    """
+    if "data" not in item or not isinstance(item["data"], dict):
+        return item
+    flat = dict(item["data"])
+    flat["key"] = item.get("key", flat.get("key", ""))
+    return flat

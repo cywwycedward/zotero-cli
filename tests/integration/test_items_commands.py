@@ -34,7 +34,18 @@ class TestItemsList:
     def test_default_kv_list_output(self, mocker, runner, tmp_profile) -> None:
         mock_api = mocker.patch(
             "zotero_cli.adapters.zotero_api.ZoteroAPI.items_top",
-            return_value=[{"key": "ABC", "title": "Test Paper", "itemType": "journalArticle"}],
+            return_value=[{
+                "key": "ABC",
+                "version": 1,
+                "data": {
+                    "key": "ABC",
+                    "title": "Test Paper",
+                    "itemType": "journalArticle",
+                    "creators": [],
+                    "date": "2026",
+                    "tags": [],
+                },
+            }],
         )
         mocker.patch(
             "zotero_cli.adapters.zotero_api.ZoteroAPI.count_items",
@@ -49,13 +60,18 @@ class TestItemsList:
         assert result.exit_code == 0
         assert "key: ABC" in result.stdout
         assert "title: Test Paper" in result.stdout
+        assert "itemType: journalArticle" in result.stdout
         assert result.stderr == ""
         mock_api.assert_called_once()
 
     def test_json_envelope_output(self, mocker, runner, tmp_profile) -> None:
         mocker.patch(
             "zotero_cli.adapters.zotero_api.ZoteroAPI.items_top",
-            return_value=[{"key": "ABC"}],
+            return_value=[{
+                "key": "ABC",
+                "version": 1,
+                "data": {"key": "ABC", "title": "Test", "itemType": "journalArticle"},
+            }],
         )
         mocker.patch(
             "zotero_cli.adapters.zotero_api.ZoteroAPI.count_items",
@@ -72,6 +88,28 @@ class TestItemsList:
         assert parsed["ok"] is True
         assert parsed["meta"]["command"] == "items.list"
         assert result.stderr == ""
+
+    def test_quiet_outputs_keys(self, mocker, runner, tmp_profile) -> None:
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.items_top",
+            return_value=[
+                {"key": "A1", "data": {"key": "A1", "title": "P1"}},
+                {"key": "B2", "data": {"key": "B2", "title": "P2"}},
+            ],
+        )
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.count_items",
+            return_value=2,
+        )
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.last_modified_version",
+            return_value=10,
+        )
+
+        result = runner.invoke(app, ["--quiet", "items", "list"])
+        assert result.exit_code == 0
+        lines = result.stdout.strip().split("\n")
+        assert lines == ["A1", "B2"]
 
 
 class TestItemsShow:
@@ -142,6 +180,40 @@ class TestItemsCreate:
         parsed = json.loads(result.stdout)
         assert parsed["ok"] is True
         assert parsed["meta"]["command"] == "items.create"
+
+    def test_create_with_attach_shows_both_keys(
+        self, mocker, runner, tmp_profile, monkeypatch, tmp_path
+    ) -> None:
+        """items create --attach should output both parent and attachment keys."""
+        monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
+        pdf = tmp_profile.parent / "test.pdf"
+        pdf.write_text("dummy pdf")
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.create_items",
+            return_value={
+                "successful": [{"index": 0, "key": "PARENT1", "version": 0}],
+                "unchanged": [],
+                "failed": [],
+            },
+        )
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.attachment_both",
+            return_value={
+                "success": ["ATT1"],
+                "unchanged": [],
+                "failure": [],
+            },
+        )
+
+        result = runner.invoke(
+            app,
+            ["items", "create", "--type", "journalArticle", "--title", "Test",
+             "--attach", str(pdf), "--attach-title", "Custom Title"],
+        )
+        assert result.exit_code == 0
+        assert "Created" in result.stdout
+        assert "PARENT1" in result.stdout
+        assert "ATT1" in result.stdout
 
 
 class TestItemsUpdate:
@@ -217,32 +289,51 @@ class TestItemsAttach:
         assert result.exit_code == 0
         assert "attach" in result.stdout.lower() or "Usage" in result.stdout
 
-    def test_attach_with_force_zfs_rejected(self, mocker, runner, tmp_profile) -> None:
-        """ZFS --force should be rejected."""
-        # Create a dummy PDF
+    def test_attach_default_output(
+        self, mocker, runner, tmp_profile, monkeypatch, tmp_path,
+    ) -> None:
+        """items attach should show 'Attached' in summary output."""
+        monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
         pdf = tmp_profile.parent / "test.pdf"
         pdf.write_text("dummy pdf")
         mocker.patch(
-            "zotero_cli.adapters.zotero_api.ZoteroAPI.upload_attachments",
-            return_value={"successful": [{"key": "ATT", "version": 1}]},
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.attachment_simple",
+            return_value={
+                "success": ["ATT1"],
+                "unchanged": [],
+                "failure": [],
+            },
         )
 
+        result = runner.invoke(app, ["items", "attach", "PARENT", str(pdf)])
+        assert result.exit_code == 0
+        assert "Attached" in result.stdout
+        assert "ATT1" in result.stdout
+
+    def test_attach_with_force_zfs_rejected(self, mocker, runner, tmp_profile) -> None:
+        """ZFS --force should be rejected."""
+        pdf = tmp_profile.parent / "test.pdf"
+        pdf.write_text("dummy pdf")
+
         result = runner.invoke(app, ["items", "attach", "PARENT", str(pdf), "--force"])
-        # --force with ZFS should return MutuallyExclusiveArgsError (exit 64)
         assert result.exit_code == 64 or "force" in result.stderr.lower()
 
-    def test_attach_with_reuse_key_not_found(self, mocker, runner, tmp_profile) -> None:
-        """--reuse-key with non-existent key should return error."""
+    def test_attach_reuse_key_not_found(
+        self, mocker, runner, tmp_profile, monkeypatch, tmp_path,
+    ) -> None:
+        """--reuse-key with non-existent key should return ITEM_NOT_FOUND."""
+        monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
         pdf = tmp_profile.parent / "test.pdf"
         pdf.write_text("dummy pdf")
         from zotero_cli.models.errors import ItemNotFoundError
         mocker.patch(
-            "zotero_cli.adapters.zotero_api.ZoteroAPI.upload_attachments",
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.item",
             side_effect=ItemNotFoundError("Item 'NOPE' not found"),
         )
 
         result = runner.invoke(app, ["items", "attach", "PARENT", str(pdf), "--reuse-key", "NOPE"])
-        assert result.exit_code != 0
+        assert result.exit_code == 1
+        assert "ITEM_NOT_FOUND" in result.stderr
 
 
 class TestGroupWebdavRejection:
