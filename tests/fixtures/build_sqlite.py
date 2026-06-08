@@ -107,6 +107,13 @@ if __name__ == "__main__":
     db.execute("INSERT INTO itemCreators VALUES(1002, 1, 1, 0)")
     db.execute("INSERT INTO itemCreators VALUES(1002, 2, 1, 1)")
 
+    # Empty feed (for unread_count=0 test)
+    db.execute("INSERT INTO libraries VALUES(20, 'feed')")
+    db.execute("""
+        INSERT INTO feeds VALUES(20, 'Empty Feed', 'https://example.com/empty',
+            '2024-06-20 10:00:00', '2024-06-20 10:00:00', NULL, 60)
+    """)
+
     db.commit()
     db.close()
     print(f"Created {OUT}")

@@ -74,7 +74,8 @@ class SQLiteReader:
             f.libraryID, f.name, f.url, f.lastUpdate, f.lastCheck,
             f.lastCheckError, f.refreshInterval,
             COUNT(fi.itemID) AS total_count,
-            SUM(CASE WHEN fi.readTime IS NULL THEN 1 ELSE 0 END) AS unread_count
+            COALESCE(SUM(CASE WHEN fi.readTime IS NULL
+                AND fi.itemID IS NOT NULL THEN 1 ELSE 0 END), 0) AS unread_count
         FROM feeds f
         LEFT JOIN items i ON i.libraryID = f.libraryID
         LEFT JOIN feedItems fi ON fi.itemID = i.itemID

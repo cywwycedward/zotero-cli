@@ -28,14 +28,15 @@ def svc(reader: SQLiteReader) -> FeedService:
 class TestFeedList:
     def test_lists_feeds(self, svc: FeedService) -> None:
         feeds = svc.list_feeds()
-        assert len(feeds) == 1
-        assert feeds[0].name == "Test Feed"
-        assert feeds[0].total_count == 5
+        assert len(feeds) == 2
+        test_feed = next(f for f in feeds if f.name == "Test Feed")
+        assert test_feed.total_count == 5
 
     def test_unread_count(self, svc: FeedService) -> None:
         feeds = svc.list_feeds()
         # 1001, 1003, 1005 have NULL readTime → 3 unread
-        assert feeds[0].unread_count == 3
+        test_feed = next(f for f in feeds if f.name == "Test Feed")
+        assert test_feed.unread_count == 3
 
 
 class TestFeedItems:
@@ -74,3 +75,13 @@ class TestFeedNotFoundIntegration:
     def test_list_items_unknown_feed_raises(self, svc: FeedService) -> None:
         with pytest.raises(FeedNotFoundError):
             svc.list_items(99999)
+
+
+class TestEmptyFeed:
+    """F5: empty feed must have unread_count=0, not 1."""
+
+    def test_empty_feed_unread_count_zero(self, svc: FeedService) -> None:
+        feeds = svc.list_feeds()
+        empty = next(f for f in feeds if f.name == "Empty Feed")
+        assert empty.total_count == 0
+        assert empty.unread_count == 0
