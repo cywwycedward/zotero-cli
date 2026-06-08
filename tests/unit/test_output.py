@@ -1,7 +1,8 @@
-"""Tests for the output renderer module — kv, kv-list, tree renderers."""
+"""Tests for the output renderer module — kv, kv-list, tree, summary, yaml."""
 from __future__ import annotations
 
 import pytest
+import yaml as _yaml
 
 from zotero_cli.models.envelope import Envelope
 from zotero_cli.models.errors import MutuallyExclusiveArgsError
@@ -123,6 +124,90 @@ class TestTree:
         )
         expected = "Root\n├── Child1\n│   └── Grandchild\n└── Child2\n"
         assert result == expected
+
+
+class TestSummary:
+    """SUMMARY output mode tests."""
+
+    def test_create_success(self) -> None:
+        data = {"successful": ["ABC", "DEF"], "failed": []}
+        env = Envelope.success(data=data, command="items.create", elapsed_ms=100)
+        result = render(
+            envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False
+        )
+        expected = "✓ Created 2 items:\n  ABC, DEF\n"
+        assert result == expected
+
+    def test_with_failures(self) -> None:
+        data = {
+            "successful": ["ABC"],
+            "failed": [{"code": "INVALID_FIELD", "message": "Title is required"}],
+        }
+        env = Envelope.success(data=data, command="items.create", elapsed_ms=100)
+        result = render(
+            envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False
+        )
+        expected = (
+            "✓ Created 1 item:\n"
+            "  ABC\n"
+            "\n"
+            "✗ 1 item failed:\n"
+            "  INVALID_FIELD: Title is required\n"
+        )
+        assert result == expected
+
+    def test_update_verb(self) -> None:
+        data = {"successful": ["XYZ"], "failed": []}
+        env = Envelope.success(data=data, command="items.update", elapsed_ms=100)
+        result = render(
+            envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False
+        )
+        assert "Updated" in result
+
+    def test_delete_verb(self) -> None:
+        data = {"successful": ["XYZ"], "failed": []}
+        env = Envelope.success(data=data, command="items.delete", elapsed_ms=100)
+        result = render(
+            envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False
+        )
+        assert "Deleted" in result
+
+    def test_attach_verb(self) -> None:
+        data = {"successful": ["XYZ"], "failed": []}
+        env = Envelope.success(data=data, command="items.attach", elapsed_ms=100)
+        result = render(
+            envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False
+        )
+        assert "Attached" in result
+
+
+class TestYaml:
+    """YAML output mode tests."""
+
+    def test_masks_api_key(self) -> None:
+        data = {"api_key": "abcdef123456", "name": "test"}
+        env = Envelope.success(data=data, command="config.show", elapsed_ms=100)
+        result = render(
+            envelope=env, mode=OutputMode.YAML, json_mode=False, quiet=False
+        )
+        parsed = _yaml.safe_load(result)
+        assert parsed["api_key"] == "abcd****"
+        assert parsed["name"] == "test"
+
+    def test_masks_password_in_nested_webdav(self) -> None:
+        data = {
+            "webdav": {
+                "url": "http://example.com",
+                "password": "secret123",
+            }
+        }
+        env = Envelope.success(data=data, command="config.show", elapsed_ms=100)
+        result = render(
+            envelope=env, mode=OutputMode.YAML, json_mode=False, quiet=False
+        )
+        parsed = _yaml.safe_load(result)
+        assert parsed["webdav"]["password"] == "****"
+        assert parsed["webdav"]["url"] == "http://example.com"
 
 
 class TestFieldFilter:

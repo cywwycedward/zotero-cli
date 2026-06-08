@@ -4,6 +4,8 @@ from __future__ import annotations
 import enum
 from typing import Any
 
+import yaml as _yaml
+
 from zotero_cli.models.envelope import Envelope
 from zotero_cli.models.errors import MutuallyExclusiveArgsError
 
@@ -61,6 +63,8 @@ def _dispatch(data: Any, command: str, mode: OutputMode) -> str:
         OutputMode.KV: _render_kv,
         OutputMode.KV_LIST: _render_kv_list,
         OutputMode.TREE: _render_tree,
+        OutputMode.SUMMARY: lambda d: _render_summary(d, command),
+        OutputMode.YAML: _render_yaml,
     }
     renderer = renderers[mode]
     return renderer(data)
@@ -115,6 +119,46 @@ def _render_tree(data: Any) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _render_summary(data: Any, command: str) -> str:
+    """Render a summary of successful and failed operations."""
+    if not isinstance(data, dict):
+        return ""
+
+    successful = data.get("successful", [])
+    failed = data.get("failed", [])
+    lines: list[str] = []
+
+    verb = _determine_verb(command)
+
+    if successful:
+        count = len(successful)
+        item_word = "item" if count == 1 else "items"
+        items_str = ", ".join(str(s) for s in successful)
+        lines.append(f"✓ {verb} {count} {item_word}:")
+        lines.append(f"  {items_str}")
+
+    if failed:
+        if successful:
+            lines.append("")
+        count = len(failed)
+        item_word = "item" if count == 1 else "items"
+        lines.append(f"✗ {count} {item_word} failed:")
+        for item in failed:
+            code = item.get("code", "UNKNOWN")
+            message = item.get("message", "")
+            lines.append(f"  {code}: {message}")
+
+    if lines:
+        lines.append("")
+    return "\n".join(lines)
+
+
+def _render_yaml(data: Any) -> str:
+    """Render data as YAML with sensitive field masking."""
+    masked = _mask_sensitive(data)
+    return _yaml.safe_dump(masked, default_flow_style=False, allow_unicode=True)
+
+
 def _render_default_error(envelope: Envelope) -> str:
     """Render a failed envelope as a user-facing error message."""
     error = envelope.error
@@ -139,3 +183,32 @@ def _apply_field_filter(data: Any, fields: list[str]) -> Any:
     if isinstance(data, list):
         return [_apply_field_filter(item, fields) for item in data]
     return data
+
+
+def _mask_sensitive(data: Any) -> Any:
+    """Recursively mask sensitive fields (api_key, password)."""
+    if isinstance(data, dict):
+        result: dict[str, Any] = {}
+        for key, value in data.items():
+            if key == "api_key" and isinstance(value, str):
+                result[key] = value[:4] + "****"
+            elif key == "password" and isinstance(value, str):
+                result[key] = "****"
+            else:
+                result[key] = _mask_sensitive(value)
+        return result
+    return data
+
+
+def _determine_verb(command: str) -> str:
+    """Map command name to past-tense verb for summary output."""
+    verb_map: dict[str, str] = {
+        "items.create": "Created",
+        "items.update": "Updated",
+        "items.delete": "Deleted",
+        "items.attach": "Attached",
+    }
+    for prefix, verb in verb_map.items():
+        if command.startswith(prefix):
+            return verb
+    return "Processed"
