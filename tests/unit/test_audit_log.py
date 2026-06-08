@@ -5,6 +5,9 @@ import json
 from pathlib import Path
 from typing import cast
 
+import pytest
+
+import zotero_cli.utils.audit_log as audit_log_module
 from zotero_cli.utils.audit_log import AuditEntry, _mask_args, write_entry
 
 # ── Step 1: Basic JSONL append writer ──────────────────────────────────────
@@ -116,3 +119,74 @@ def test_short_api_key_fully_masked() -> None:
     args = {"api_key": "abc"}
     masked = cast(dict[str, object], _mask_args(args))
     assert masked["api_key"] == "****"
+
+
+# ── Step 3: Gzip rotation ───────────────────────────────────────────────────
+
+
+def test_no_rotation_below_threshold(tmp_path: Path) -> None:
+    log = tmp_path / "audit.log"
+    log.write_text("x" * 100, encoding="utf-8")
+    # Threshold is 10 MB, so 100 bytes is well below
+    entry = AuditEntry(
+        timestamp="2026-06-08T12:00:00Z",
+        profile="default",
+        command="list-items",
+        args={},
+        result="success",
+        affected_keys=[],
+        elapsed_ms=0,
+    )
+    write_entry(log_path=log, entry=entry)
+    # No archive should have been created
+    archives = list(tmp_path.glob("audit.log.*.gz"))
+    assert archives == []
+
+
+def test_rotates_at_threshold(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Bypass 10 MB threshold: set rotate bytes to 100, fill log past it."""
+    monkeypatch.setattr(audit_log_module, "AUDIT_LOG_ROTATE_BYTES", 100)
+    log = tmp_path / "audit.log"
+    # Fill with old content way past the threshold
+    old_content = "x" * 150  # > 100
+    log.write_text(old_content, encoding="utf-8")
+
+    entry = AuditEntry(
+        timestamp="2026-06-08T12:00:00Z",
+        profile="default",
+        command="list-items",
+        args={},
+        result="success",
+        affected_keys=[],
+        elapsed_ms=0,
+    )
+    write_entry(log_path=log, entry=entry)
+
+    archives = sorted(tmp_path.glob("audit.log.*.gz"))
+    assert len(archives) == 1
+    # After rotation, log should only contain the new entry (1 line)
+    lines = log.read_text(encoding="utf-8").strip().splitlines()
+    assert len(lines) == 1
+
+
+def test_archive_name_uses_entry_year_month(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(audit_log_module, "AUDIT_LOG_ROTATE_BYTES", 100)
+    log = tmp_path / "audit.log"
+    log.write_text("x" * 150, encoding="utf-8")
+
+    entry = AuditEntry(
+        timestamp="2026-12-15T00:00:00Z",
+        profile="default",
+        command="list-items",
+        args={},
+        result="success",
+        affected_keys=[],
+        elapsed_ms=0,
+    )
+    write_entry(log_path=log, entry=entry)
+
+    archives = list(tmp_path.glob("audit.log.*.gz"))
+    assert len(archives) == 1
+    assert archives[0].name == "audit.log.2026-12.gz"

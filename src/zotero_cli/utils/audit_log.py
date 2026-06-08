@@ -4,10 +4,13 @@ Design: §9 Audit Log (doc/design.md)
 """
 from __future__ import annotations
 
+import gzip
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+
+from zotero_cli.constants import AUDIT_LOG_ROTATE_BYTES
 
 _API_KEY_NAMES: frozenset[str] = frozenset({"api_key", "apiKey", "apikey", "api-key"})
 _REDACT_NAMES: frozenset[str] = frozenset({"password", "passwd", "secret"})
@@ -40,6 +43,8 @@ def write_entry(*, log_path: Path, entry: AuditEntry) -> None:
 
     data = asdict(entry)
     data["args"] = _mask_args(data["args"])
+
+    _maybe_rotate(log_path, entry.timestamp)
 
     # Drop None values, but keep args and affected_keys even if empty
     filtered = {}
@@ -75,7 +80,31 @@ def _mask_value(key: str, value: object) -> object:
 
 
 def _maybe_rotate(log_path: Path, entry_timestamp: str) -> None:
-    """Archives and truncates *log_path* if it exceeds the rotation threshold.
+    """Archives *log_path* via gzip and truncates it if it exceeds the threshold.
 
-    Currently a no-op; rotation logic added in Step 3.
+    1. If log doesn't exist or its size is below ``AUDIT_LOG_ROTATE_BYTES`` → return.
+    2. Extract ``YYYY-MM`` from *entry_timestamp* (first 7 chars).
+    3. Archive to ``{log_path.name}.{year_month}.gz``.
+    4. If archive already exists, append an incrementing counter.
+    5. Truncate the original log file.
     """
+    if not log_path.exists():
+        return
+
+    size = log_path.stat().st_size
+    if size < AUDIT_LOG_ROTATE_BYTES:
+        return
+
+    year_month = entry_timestamp[:7]  # "2026-06"
+    archive_path = log_path.with_name(f"{log_path.name}.{year_month}.gz")
+
+    counter = 1
+    while archive_path.exists():
+        counter += 1
+        archive_path = log_path.with_name(f"{log_path.name}.{year_month}.{counter}.gz")
+
+    with log_path.open("rb") as f_in, gzip.open(archive_path, "wb") as f_out:
+        f_out.writelines(f_in)
+
+    # Truncate original log
+    log_path.write_text("", encoding="utf-8")
