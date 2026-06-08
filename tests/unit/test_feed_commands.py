@@ -28,6 +28,12 @@ class TestFeedModelKeys:
         assert "key" in d
         assert d["key"] == "1001"
 
+    def test_feed_item_dump_contains_date(self) -> None:
+        item = FeedItem(feed_id=10, item_id=1001, date_raw="2024-06-15 2024-06-15")
+        d = item.model_dump()
+        assert "date" in d
+        assert d["date"] == "2024-06-15 2024-06-15"
+
 
 class TestFeedNotFound:
     """F3: feeds items <unknown-id> must raise FEED_NOT_FOUND."""

@@ -53,6 +53,11 @@ class FeedItem(BaseModel):
 
     @computed_field  # type: ignore[prop-decorator]
     @property
+    def date(self) -> str:
+        return self.date_raw
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
     def key(self) -> str:
         """Used by --quiet output."""
         return str(self.item_id)
