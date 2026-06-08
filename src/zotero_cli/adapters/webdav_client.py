@@ -5,7 +5,6 @@ prop XML generation/parsing, and storage_path normalization.
 """
 from __future__ import annotations
 
-import base64
 import contextlib
 import hashlib
 import os
@@ -29,12 +28,15 @@ _ZOTERO_KEY_RE = re.compile(r"^[A-Z0-9]+$")
 
 
 def _build_zip(file_path: Path) -> bytes:
-    """Build a Zotero-compatible ZIP with base64-encoded internal filename, ZIP_STORED."""
-    raw_name = file_path.name.encode("utf-8")
-    internal_name = base64.b64encode(raw_name).decode("ascii")
+    """Build a Zotero-compatible ZIP with raw filename and ZIP_DEFLATED.
+
+    Per phase4-open-issues spike: zotero-mcp uses raw filenames and ZIP_DEFLATED,
+    confirmed by a working reference implementation. Design §10.1 base64 assumption
+    was unverified; we follow the known-working approach until proof otherwise.
+    """
     buf = BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED) as zf:
-        zf.writestr(internal_name, file_path.read_bytes())
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.write(file_path, arcname=file_path.name)
     return buf.getvalue()
 
 

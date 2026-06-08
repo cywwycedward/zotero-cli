@@ -216,3 +216,54 @@ class TestItemsAttach:
         result = runner.invoke(app, ["items", "attach", "--help"])
         assert result.exit_code == 0
         assert "attach" in result.stdout.lower() or "Usage" in result.stdout
+
+    def test_attach_with_force_zfs_rejected(self, mocker, runner, tmp_profile) -> None:
+        """ZFS --force should be rejected."""
+        # Create a dummy PDF
+        pdf = tmp_profile.parent / "test.pdf"
+        pdf.write_text("dummy pdf")
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.upload_attachments",
+            return_value={"successful": [{"key": "ATT", "version": 1}]},
+        )
+
+        result = runner.invoke(app, ["items", "attach", "PARENT", str(pdf), "--force"])
+        # --force with ZFS should return MutuallyExclusiveArgsError (exit 64)
+        assert result.exit_code == 64 or "force" in result.stderr.lower()
+
+    def test_attach_with_reuse_key_not_found(self, mocker, runner, tmp_profile) -> None:
+        """--reuse-key with non-existent key should return error."""
+        pdf = tmp_profile.parent / "test.pdf"
+        pdf.write_text("dummy pdf")
+        from zotero_cli.models.errors import ItemNotFoundError
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.upload_attachments",
+            side_effect=ItemNotFoundError("Item 'NOPE' not found"),
+        )
+
+        result = runner.invoke(app, ["items", "attach", "PARENT", str(pdf), "--reuse-key", "NOPE"])
+        assert result.exit_code != 0
+
+
+class TestGroupWebdavRejection:
+    """Verify group library + WebDAV is rejected (design §10.0.1)."""
+
+    def test_config_validate_rejects(self, runner, monkeypatch, tmp_path) -> None:
+        config_dir = tmp_path / "zotero-cli"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+        from zotero_cli.adapters.config_store import write_toml
+        write_toml(
+            config_dir / "config.toml",
+            {
+                "default": {
+                    "api_key": "k",
+                    "library_id": "1",
+                    "library_type": "group",
+                    "webdav": {"url": "https://x", "username": "u", "password": "p"},
+                }
+            },
+        )
+        result = runner.invoke(app, ["config", "validate"])
+        assert result.exit_code == 1
+        assert "UNSUPPORTED_LIBRARY_TYPE" in result.stderr

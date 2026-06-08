@@ -15,16 +15,16 @@ from zotero_cli.models.errors import WebdavPropInvalidError
 
 
 class TestBuildZip:
-    def test_produces_valid_zip_with_stored_compression(self, tmp_path: Path) -> None:
+    def test_produces_valid_zip_with_raw_filename(self, tmp_path: Path) -> None:
         pdf = tmp_path / "test.pdf"
         pdf.write_text("fake pdf content")
         data = _build_zip(pdf)
         import io
         import zipfile
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
-            assert len(zf.namelist()) == 1
-            info = zf.getinfo(zf.namelist()[0])
-            assert info.compress_type == zipfile.ZIP_STORED
+            names = zf.namelist()
+            assert len(names) == 1
+            assert names[0] == "test.pdf"  # raw filename, not base64
 
 
 class TestComputeMd5:
