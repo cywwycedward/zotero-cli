@@ -9,10 +9,12 @@ import typer
 
 from zotero_cli.commands._runner import GlobalOptions
 from zotero_cli.commands.config import app as config_app
+from zotero_cli.commands.items import app as items_app
 
 app = typer.Typer(help="Single-user, agent-first CLI for Zotero")
 
 app.add_typer(config_app, name="config")
+app.add_typer(items_app, name="items")
 
 
 @app.callback()
