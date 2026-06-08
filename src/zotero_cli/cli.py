@@ -1,4 +1,5 @@
 """Top-level Typer application. Thin entry: registers sub-commands and global flags."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -17,18 +18,10 @@ app.add_typer(config_app, name="config")
 @app.callback()
 def _global(
     ctx: typer.Context,
-    json_mode: Annotated[
-        bool, typer.Option("--json", help="Output as JSON envelope")
-    ] = False,
-    profile: Annotated[
-        str, typer.Option("--profile", help="Profile name")
-    ] = "default",
-    quiet: Annotated[
-        bool, typer.Option("--quiet", "-q", help="Quiet mode: keys only")
-    ] = False,
-    config_path: Annotated[
-        Path | None, typer.Option("--config-path", hidden=True)
-    ] = None,
+    json_mode: Annotated[bool, typer.Option("--json", help="Output as JSON envelope")] = False,
+    profile: Annotated[str, typer.Option("--profile", help="Profile name")] = "default",
+    quiet: Annotated[bool, typer.Option("--quiet", "-q", help="Quiet mode: keys only")] = False,
+    config_path: Annotated[Path | None, typer.Option("--config-path", hidden=True)] = None,
 ) -> None:
     ctx.obj = GlobalOptions(
         profile=profile,

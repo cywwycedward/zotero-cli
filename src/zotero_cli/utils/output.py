@@ -178,7 +178,7 @@ def _render_summary(data: Any, command: str) -> str:
 
 def _render_yaml(data: Any) -> str:
     """Render data as YAML with sensitive field masking."""
-    masked = _mask_sensitive(data)
+    masked = mask_sensitive(data)
     return _yaml.safe_dump(masked, default_flow_style=False, allow_unicode=True)
 
 
@@ -240,7 +240,7 @@ def _apply_field_filter(data: Any, fields: list[str]) -> Any:
     return data
 
 
-def _mask_sensitive(data: Any) -> Any:
+def mask_sensitive(data: Any) -> Any:
     """Recursively mask sensitive fields (api_key, password)."""
     if isinstance(data, dict):
         result: dict[str, Any] = {}
@@ -250,7 +250,7 @@ def _mask_sensitive(data: Any) -> Any:
             elif key == "password" and isinstance(value, str):
                 result[key] = "****"
             else:
-                result[key] = _mask_sensitive(value)
+                result[key] = mask_sensitive(value)
         return result
     return data
 

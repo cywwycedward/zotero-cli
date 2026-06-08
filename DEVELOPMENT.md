@@ -498,7 +498,8 @@ git worktree remove ../zotero-cli-webdav
 
 ### §9.2 阶段 2：配置层
 
-- [ ] `models/config.py`：pydantic-settings `Config` 主模型 + `ProfileConfig` / `WebDAVConfig` / `SQLiteConfig` / `ItemFieldsConfig` / `FeedItemFieldsConfig` 子模型
+- [x] `models/config.py`：~~pydantic-settings~~ Config 主模型（BaseModel + 手写 ENV 覆盖）+ `ProfileConfig` / `WebDAVConfig` / `SQLiteConfig` / `ItemFieldsConfig` / `FeedItemFieldsConfig` 子模型
+  - **设计偏离**：未使用 pydantic-settings BaseSettings。原因：`ZOTERO_CLI_<PROFILE>_<KEY>` 命名约定需要 profile 名动态注入，`BaseSettings` 的 `env_nested_delimiter` 不直接支持。ENV 覆盖逻辑在 `config_service.py` `_apply_env_overrides()` 实现。
 - [ ] `WebDAVConfig.storage_path` 的 normalize validator（设计 §10.1）：空字符串 ✓、`/` 开头无尾随 ✓、拒绝单 `/` / `..` / `//`
 - [ ] `Config.model_validator` 校验 WebDAV + library_type 兼容性矩阵（设计 §10.0.1）
 - [ ] 环境变量覆盖：`ZOTERO_CLI_<PROFILE>_<KEY>` 嵌套覆盖（设计 §5.3）

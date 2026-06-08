@@ -1,5 +1,8 @@
+from zotero_cli.cli import app
+
+
 def main() -> None:
-    raise NotImplementedError("CLI entry implemented in 阶段 3")
+    app()
 
 
 if __name__ == "__main__":

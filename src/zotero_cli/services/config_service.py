@@ -3,6 +3,7 @@
 Per DEVELOPMENT.md §5.2: all file I/O is delegated to adapters/config_store.
 This module only composes calls and applies business rules.
 """
+
 from __future__ import annotations
 
 import os
@@ -10,13 +11,15 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
 from zotero_cli.adapters.config_store import (
     default_config_path,
     detect_sqlite_db,
     read_toml,
 )
 from zotero_cli.models.config import Config, ProfileConfig
-from zotero_cli.models.errors import InvalidProfileError
+from zotero_cli.models.errors import ConfigInvalidError, InvalidProfileError
 
 # ── ENV override mapping (design §5.3) ─────────────────────────────────────
 
@@ -56,7 +59,7 @@ def _apply_env_overrides(profile_name: str, profile_dict: dict[str, Any]) -> dic
     for env_key, env_val in os.environ.items():
         if not env_key.startswith(prefix):
             continue
-        suffix = env_key[len(prefix):]
+        suffix = env_key[len(prefix) :]
         mapping = _ENV_FIELD_MAP.get(suffix)
         if mapping is None:
             continue
@@ -97,7 +100,9 @@ def _fill_sqlite_default(profile_dict: dict[str, Any]) -> dict[str, Any]:
 
 
 def load_config(
-    profile: str, *, config_path: Path | None = None,
+    profile: str,
+    *,
+    config_path: Path | None = None,
 ) -> ProfileConfig:
     """Load and validate a single profile.
 
@@ -118,12 +123,20 @@ def load_config(
     profile_dict = _apply_env_overrides(profile, profile_dict)
     profile_dict = _fill_sqlite_default(profile_dict)
 
-    cfg = Config(profiles={profile: profile_dict})  # type: ignore[dict-item]  # pydantic coerces dicts
+    try:
+        cfg = Config(profiles={profile: profile_dict})  # type: ignore[dict-item]  # pydantic coerces dicts
+    except ValidationError as exc:
+        raise ConfigInvalidError(
+            str(exc),
+            hint="Check your config file values and types.",
+        ) from exc
     return cfg.profiles[profile]
 
 
 def validate_profile(
-    profile: str, *, config_path: Path | None = None,
+    profile: str,
+    *,
+    config_path: Path | None = None,
 ) -> None:
     """Validate that a profile exists and passes all checks (incl. compat matrix)."""
     load_config(profile=profile, config_path=config_path)

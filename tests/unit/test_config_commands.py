@@ -52,6 +52,15 @@ def test_init_force_overwrites(cfg_at: Path) -> None:
     assert result.exit_code == 0
 
 
+def test_init_respects_profile_flag(cfg_at: Path) -> None:
+    """config init --profile work should create a 'work' profile, not 'default'."""
+    result = runner.invoke(app, ["--profile", "work", "config", "init"])
+    assert result.exit_code == 0
+    data = read_toml(cfg_at)
+    assert "work" in data
+    assert "default" not in data
+
+
 # ── show ───────────────────────────────────────────────────────────────────
 
 
@@ -159,6 +168,66 @@ def test_set_list_field_from_csv(cfg_at: Path) -> None:
     )
     runner.invoke(app, ["config", "set", "item_fields.list", "key,title,date"])
     assert read_toml(cfg_at)["default"]["item_fields"]["list"] == ["key", "title", "date"]
+
+
+def test_set_coerces_int(cfg_at: Path) -> None:
+    write_toml(
+        cfg_at,
+        {
+            "default": {
+                "api_key": "k",
+                "library_id": "1",
+                "library_type": "user",
+                "webdav": {"url": "https://x", "username": "u", "password": "p"},
+            }
+        },
+    )
+    runner.invoke(app, ["config", "set", "webdav.timeout", "30"])
+    assert read_toml(cfg_at)["default"]["webdav"]["timeout"] == 30
+
+
+def test_set_coerces_bool_true(cfg_at: Path) -> None:
+    write_toml(
+        cfg_at,
+        {
+            "default": {
+                "api_key": "k",
+                "library_id": "1",
+                "library_type": "user",
+                "webdav": {"url": "https://x", "username": "u", "password": "p"},
+            }
+        },
+    )
+    runner.invoke(app, ["config", "set", "webdav.verify_ssl", "false"])
+    assert read_toml(cfg_at)["default"]["webdav"]["verify_ssl"] is False
+
+
+def test_set_coerces_float(cfg_at: Path) -> None:
+    """Float coerced value for int field fails pydantic validation."""
+    write_toml(
+        cfg_at,
+        {
+            "default": {
+                "api_key": "k",
+                "library_id": "1",
+                "library_type": "user",
+                "webdav": {"url": "https://x", "username": "u", "password": "p"},
+            }
+        },
+    )
+    result = runner.invoke(app, ["config", "set", "webdav.timeout", "1.5"])
+    # pydantic rejects 1.5 for int-typed timeout field
+    assert result.exit_code != 0
+
+
+def test_set_preserves_string(cfg_at: Path) -> None:
+    """Non-numeric, non-bool values stay as strings."""
+    write_toml(
+        cfg_at,
+        {"default": {"api_key": "k", "library_id": "1", "library_type": "user"}},
+    )
+    runner.invoke(app, ["config", "set", "api_key", "abc123def456"])
+    assert read_toml(cfg_at)["default"]["api_key"] == "abc123def456"
 
 
 # ── get ────────────────────────────────────────────────────────────────────

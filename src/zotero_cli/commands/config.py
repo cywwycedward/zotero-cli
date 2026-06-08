@@ -3,12 +3,14 @@
 All commands go through commands._runner.run_command for stdout/stderr split
 and error handling. No direct I/O except via adapters/config_store.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Annotated, Any
 
 import typer
+from pydantic import ValidationError
 
 from zotero_cli.adapters.config_store import default_config_path, read_toml, write_toml
 from zotero_cli.commands._runner import GlobalOptions, run_command
@@ -18,7 +20,7 @@ from zotero_cli.models.errors import (
     InvalidFieldError,
 )
 from zotero_cli.services.config_service import load_config, validate_profile
-from zotero_cli.utils.output import OutputMode
+from zotero_cli.utils.output import OutputMode, mask_sensitive
 
 app = typer.Typer(help="Manage zotero-cli configuration")
 
@@ -44,9 +46,7 @@ _DEFAULT_PROFILE_TEMPLATE: dict[str, Any] = {
 @app.command("init")
 def _init(
     ctx: typer.Context,
-    force: Annotated[
-        bool, typer.Option("--force", help="Overwrite existing config")
-    ] = False,
+    force: Annotated[bool, typer.Option("--force", help="Overwrite existing config")] = False,
 ) -> None:
     """Create a new config file with a default profile."""
     options = _get_options(ctx)
@@ -58,8 +58,9 @@ def _init(
                 f"Config file already exists at {path}",
                 hint="Use --force to overwrite.",
             )
-        write_toml(path, {"default": dict(_DEFAULT_PROFILE_TEMPLATE)})
-        return {"profile": "default", "created": True, "path": str(path)}
+        profile_name = options.profile
+        write_toml(path, {profile_name: dict(_DEFAULT_PROFILE_TEMPLATE)})
+        return {"profile": profile_name, "created": True, "path": str(path)}
 
     run_command(command="config.init", mode=OutputMode.SUMMARY, options=options, work=work)
 
@@ -74,9 +75,11 @@ def _show(ctx: typer.Context) -> None:
 
     def work() -> dict[str, Any]:
         cfg = load_config(
-            profile=options.profile, config_path=options.config_path,
+            profile=options.profile,
+            config_path=options.config_path,
         )
-        return cfg.model_dump()
+        result: dict[str, Any] = mask_sensitive(cfg.model_dump())
+        return result
 
     run_command(command="config.show", mode=OutputMode.YAML, options=options, work=work)
 
@@ -98,6 +101,7 @@ def _set(
         raw = read_toml(path)
         if options.profile not in raw:
             from zotero_cli.models.errors import InvalidProfileError
+
             raise InvalidProfileError(
                 f"Profile {options.profile!r} not found",
                 hint="Run 'zotero-cli config init' first.",
@@ -107,7 +111,13 @@ def _set(
         _set_dotpath(profile_data, key, value)
 
         # Re-validate through Config model (triggers compat matrix)
-        Config(profiles={options.profile: profile_data})  # type: ignore[dict-item]
+        try:
+            Config(profiles={options.profile: profile_data})  # type: ignore[dict-item]
+        except ValidationError as exc:
+            raise ConfigInvalidError(
+                str(exc),
+                hint="The value is invalid for this config key.",
+            ) from exc
         raw[options.profile] = profile_data
         write_toml(path, raw)
         return {"key": key, "profile": options.profile}
@@ -126,7 +136,19 @@ def _set_dotpath(data: dict[str, Any], dotpath: str, value: str) -> None:
     if leaf == "list" or (len(parts) > 1 and parts[-2] in ("item_fields", "feed_item_fields")):
         data[leaf] = [v.strip() for v in value.split(",") if v.strip()]
     else:
-        data[leaf] = value
+        data[leaf] = _coerce_value(value)
+
+
+def _coerce_value(value: str) -> Any:
+    """Auto-detect type from string to maintain TOML schema consistency."""
+    if value.lower() in ("true", "false"):
+        return value.lower() == "true"
+    if value.isdigit() or (value.startswith("-") and value[1:].isdigit()):
+        return int(value)
+    try:
+        return float(value)
+    except ValueError:
+        return value
 
 
 # ── get ────────────────────────────────────────────────────────────────────
@@ -145,7 +167,8 @@ def _get(
 
     def work() -> dict[str, str]:
         cfg = load_config(
-            profile=options.profile, config_path=options.config_path,
+            profile=options.profile,
+            config_path=options.config_path,
         )
         raw = cfg.model_dump()
         value = _get_dotpath(raw, key)
@@ -189,12 +212,16 @@ def _validate(ctx: typer.Context) -> None:
 
     def work() -> dict[str, Any]:
         validate_profile(
-            profile=options.profile, config_path=options.config_path,
+            profile=options.profile,
+            config_path=options.config_path,
         )
         return {"profile": options.profile, "valid": True}
 
     run_command(
-        command="config.validate", mode=OutputMode.KV, options=options, work=work,
+        command="config.validate",
+        mode=OutputMode.KV,
+        options=options,
+        work=work,
     )
 
 
@@ -212,5 +239,8 @@ def _profiles(ctx: typer.Context) -> None:
         return [{"key": name, "name": name} for name in sorted(raw)]
 
     run_command(
-        command="config.profiles", mode=OutputMode.KV_LIST, options=options, work=work,
+        command="config.profiles",
+        mode=OutputMode.KV_LIST,
+        options=options,
+        work=work,
     )
