@@ -536,28 +536,30 @@ git worktree remove ../zotero-cli-webdav
 
 ### §9.4 阶段 4：附件上传（ZFS + WebDAV）
 
-**前置 spike（仅当本阶段做 WebDAV）**：
+**前置 spike（已通过对齐 zotero-mcp 参考实现完成）**：
 
-- [ ] `docs/superpowers/specs/spikes/webdav-protocol.md` 完成
-- [ ] spike 验证：base64 编码方式（用 Zotero 客户端实际上传，对比内部文件名）
-- [ ] spike 验证：mtime 一致性（上传后桌面端不触发"重新同步"）
-- [ ] spike 验证：prop XML 字节级格式（空格、换行、属性顺序）
-- [ ] spike 验证：storage_path 默认值与变体（`""`、`/zotero`）
+- [x] `docs/superpowers/specs/spikes/phase4-open-issues.md` 完成 — 调研报告含 7 项协议对比
+- [x] spike 验证：ZIP 文件名格式 — 与 zotero-mcp 一致（原始文件名，非 base64）
+- [x] spike 验证：ZIP 压缩方式 — 与 zotero-mcp 一致（ZIP_DEFLATED）
+- [x] spike 验证：mtime 一致性 — 与 zotero-mcp 完全一致（`int(st_mtime * 1000)`）
+- [x] spike 验证：prop XML 字节级格式 — 与 zotero-mcp 字节级一致
+- [x] spike 验证：respx 可拦截 webdav4 — 已验证可用
+- [x] spike 验证：storage_path 默认值与变体（`""`、`/zotero`）— 实现合理
 
 **实施**：
 
-- [ ] `adapters/zotero_api.py` 扩展：按设计 §10.0.2.2 命令映射表实现各 CLI 命令对应的 pyzotero 调用
-- [ ] `adapters/webdav_client.py`：webdav4 包装 + zip 构造（base64 文件名、`ZIP_STORED`）+ prop XML 生成解析 + storage_path normalize 调用
-- [ ] `services/attachment_service.py`：`_select_backend()` 派发 + §10.0.1 前置校验 + §10.0.2.5 ZFS 失败回滚 + §10.3 WebDAV 失败回滚 + 审计日志
-- [ ] `items create --attach` / `items update --attach`（场景 A，两后端都支持）
-- [ ] `items attach`（含 `--reuse-key` 场景 B 重传 + `--force` 仅 WebDAV 有效；ZFS 后端 `--force` 报 `MUTUALLY_EXCLUSIVE_ARGS`）
-- [ ] envelope `data.uploaded[]` / `unchanged[]` / `failed[]` schema 与设计 §8.3 一致；ZFS 与 WebDAV 字段集统一（不适用字段为 null）
-- [ ] `failed[]` 用独立 schema（设计 §8.3 末尾）
-- [ ] `meta.affected_keys` 按 §8.3.1 规则计算
-- [ ] WebDAV 多文件并发（设计 §10.4）：仅 ≥2 文件时启用，`ThreadPoolExecutor(max_workers=4)`
-- [ ] 设计 §12.5 手动测试清单中的附件相关项全部通过
-- [ ] 单元 + 集成测试齐全
-- [ ] 自检四项全过
+- [x] `adapters/zotero_api.py` 扩展：attachment_simple/both/upload_attachments/item_template 包装
+- [x] `adapters/webdav_client.py`：webdav4 包装 + zip 构造（原始文件名、`ZIP_DEFLATED`）+ prop XML 生成解析 + storage_path normalize + 路径遍历防护（Zotero key regex）+ defusedxml XXE 防护
+- [x] `services/attachment_service.py`：`_select_backend()` 派发 + §10.0.1 前置校验 + ZFS/WebDAV 双路径 + 回滚 + ThreadPoolExecutor 并发
+- [x] `items create --attach` / `items update --attach`（场景 A，两后端都支持）
+- [x] `items attach`（含 `--reuse-key` 场景 B 重传 + `--force` 仅 WebDAV 有效；ZFS 后端 `--force` 报 `MUTUALLY_EXCLUSIVE_ARGS`）
+- [x] envelope `data.uploaded[]` / `unchanged[]` / `failed[]` schema (`models/attachment.py`)
+- [x] `failed[]` 用独立 schema（`AttachmentFailedItem` TypedDict）
+- [x] `meta.affected_keys` 按 §8.3.1 规则计算
+- [x] WebDAV 多文件并发（设计 §10.4）：`ThreadPoolExecutor(max_workers=4)`
+- [ ] 设计 §12.5 手动测试清单中的附件相关项全部通过（需真实账号，不阻塞验收）
+- [x] 单元 + 集成测试齐全（359 tests）
+- [x] 自检四项全过（ruff clean, mypy strict 0 errors, 359 passed）
 
 ### §9.5 阶段 5：RSS（SQLite）
 

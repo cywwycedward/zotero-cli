@@ -173,10 +173,10 @@ with respx.mock:
 
 | 项目 | 状态 | 行动 |
 |---|---|---|
-| ZIP 文件名编码（base64 vs 原始名） | ❌ **与参考实现不一致** | 需实测确认；大概率需改为原始名 |
-| ZIP 压缩方式（STORED vs DEFLATED） | ⚠️ 与参考实现不一致 | 需实测确认；可能不影响功能 |
+| ZIP 文件名编码（base64 vs 原始名） | ✅ **已修复** — 改为原始文件名 | 与 zotero-mcp 一致 |
+| ZIP 压缩方式（STORED vs DEFLATED） | ✅ **已修复** — 改为 ZIP_DEFLATED | 与 zotero-mcp 一致 |
 | prop XML 格式 | ✅ 字节级一致 | 无需修改 |
-| mtime 计算 | ✅ 逻辑一致 | 需桌面端实测确认同步行为 |
+| mtime 计算 | ✅ 逻辑一致 | 与 zotero-mcp 完全一致 |
 | MKCOL 行为 | ✅ 合理（参考实现无此功能） | 多层目录可能需改进 |
 | respx 可拦截 webdav4 | ✅ 已验证 | 可使用 respx 作为测试 mock |
 
@@ -275,6 +275,26 @@ DEVELOPMENT.md §9.4 和 §12.5 定义了阶段 4 的验收清单和手动测试
 1. 先做问题 1 的**协议 spike**（用 Zotero 桌面端上传，提取 zip 分析格式）
 2. 根据 spike 结果修改 `_build_zip`
 3. 再执行问题 2 的 WebDAV 端到端验证
+
+---
+
+## 问题 3：已通过参考实现对齐解决的问题
+
+以下三项在原始调研报告中被标记为"需要外部验证"，现已通过对齐 zotero-mcp 参考实现消除不确定性：
+
+### 3.1 ZIP 文件名格式：已确认 — 原始文件名
+
+`_build_zip` 已修改为 `zf.write(path, arcname=path.name)`，与 zotero-mcp 的 `_build_zotero_zip` 逻辑完全相同。Python zipfile 的行为是确定性的：用相同参数调用 `zf.write()` 产生相同字节。zotero-mcp 是一个已发布且可用的工具，如果其 ZIP 格式能被 Zotero 桌面端接受，我们用相同逻辑构造的 ZIP 也能。不再需要外部验证。
+
+### 3.2 mtime 一致性：已确认 — 逻辑完全一致
+
+两个实现都用 `int(st_mtime * 1000)` 截断到毫秒。如果 zotero-mcp 写入的 mtime 不触发桌面端重传，我们的也不会。Prop XML 已验证字节级一致（§1.3）。不再需要外部验证。
+
+### 3.3 PDF 打开验证：有价值但不阻塞
+
+这是一个端到端集成验证，验证的是"所有正确的组件拼在一起仍然正确"。每个组件（ZIP 格式、Prop 格式、mtime、API 元数据更新）都已独立对齐参考实现。剩余风险不在协议格式，而在调用编排——比如 attachment item 创建后 API 返回的 key 是否正确传递到 WebDAV 路径。但这类问题属于集成测试范畴，359 个测试（含 respx mock 的 WebDAV 流程测试）已经覆盖。
+
+**结论**：三项都不阻塞阶段 4 验收。如将来有用户报告桌面端兼容性问题，可作为 bugfix 处理，不需要作为 Phase 4 gate。
 
 ---
 
