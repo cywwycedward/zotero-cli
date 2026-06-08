@@ -208,7 +208,7 @@ class ZoteroAPI:
         except zerr.PyZoteroError as e:
             raise _map_pyzotero_exception(e) from e
 
-    # -- Collections (to be extended by collection service) --
+    # -- Collections --
 
     def collections(self) -> list[PyzoteroResponse]:
         """List all collections."""
@@ -218,13 +218,65 @@ class ZoteroAPI:
         except zerr.PyZoteroError as e:
             raise _map_pyzotero_exception(e) from e
 
-    # -- Tags (to be extended by tag service) --
+    def create_collection(self, name: str, parent: str | None = None) -> PyzoteroResponse:
+        """Create a collection. Returns the created collection dict."""
+        try:
+            payload: list[dict[str, Any]] = [{"name": name}]
+            if parent:
+                payload[0]["parentCollection"] = parent
+            return self._zot.create_collection(payload)  # type: ignore[no-any-return]
+        except zerr.PyZoteroError as e:
+            raise _map_pyzotero_exception(e) from e
+
+    def delete_collection(self, key: str) -> bool:
+        """Delete a collection by key. Returns True on success."""
+        try:
+            import json
+            # pyzotero needs the collection dict; use collections list to find it
+            colls = json.loads(self._zot.collections())
+            target = next((c for c in colls if c.get("key") == key), None)
+            if target is None:
+                raise ItemNotFoundError(f"Collection {key!r} not found")
+            self._zot.delete_collection(target)
+            return True
+        except zerr.ResourceNotFoundError as e:
+            raise ItemNotFoundError(f"Collection {key!r} not found", cause=e) from e
+        except zerr.PyZoteroError as e:
+            raise _map_pyzotero_exception(e) from e
+
+    def add_to_collection(self, item_key: str, collection_key: str) -> bool:
+        """Add an item to a collection."""
+        try:
+            item = self.item(item_key)
+            self._zot.addto_collection(collection_key, item)
+            return True
+        except zerr.PyZoteroError as e:
+            raise _map_pyzotero_exception(e) from e
+
+    def remove_from_collection(self, item_key: str, collection_key: str) -> bool:
+        """Remove an item from a collection."""
+        try:
+            item = self.item(item_key)
+            self._zot.deletefrom_collection(collection_key, item)
+            return True
+        except zerr.PyZoteroError as e:
+            raise _map_pyzotero_exception(e) from e
+
+    # -- Tags --
 
     def tags(self) -> list[PyzoteroResponse]:
         """List all tags."""
         try:
             import json
             return json.loads(self._zot.tags())  # type: ignore[no-any-return]
+        except zerr.PyZoteroError as e:
+            raise _map_pyzotero_exception(e) from e
+
+    def delete_tags(self, *tag_names: str) -> bool:
+        """Delete one or more tags."""
+        try:
+            self._zot.delete_tags(*tag_names)
+            return True
         except zerr.PyZoteroError as e:
             raise _map_pyzotero_exception(e) from e
 

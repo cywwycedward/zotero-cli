@@ -8,13 +8,17 @@ from typing import Annotated
 import typer
 
 from zotero_cli.commands._runner import GlobalOptions
+from zotero_cli.commands.collections import app as collections_app
 from zotero_cli.commands.config import app as config_app
 from zotero_cli.commands.items import app as items_app
+from zotero_cli.commands.tags import app as tags_app
 
 app = typer.Typer(help="Single-user, agent-first CLI for Zotero")
 
+app.add_typer(collections_app, name="collections")
 app.add_typer(config_app, name="config")
 app.add_typer(items_app, name="items")
+app.add_typer(tags_app, name="tags")
 
 
 @app.callback()
