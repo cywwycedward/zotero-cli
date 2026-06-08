@@ -156,9 +156,7 @@ def _render_summary(data: Any, command: str) -> str:
     if successful:
         count = len(successful)
         item_word = "item" if count == 1 else "items"
-        keys = ", ".join(
-            s["key"] if isinstance(s, dict) else str(s) for s in successful
-        )
+        keys = ", ".join(s["key"] if isinstance(s, dict) else str(s) for s in successful)
         lines.append(f"✓ {verb} {count} {item_word}:")
         lines.append(f"  {keys}")
 

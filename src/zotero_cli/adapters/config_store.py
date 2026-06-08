@@ -4,6 +4,7 @@
 Per DEVELOPMENT.md §5.2: services/ cannot do file I/O. config_service.py imports
 this module to delegate all read/write/permission/path-detection work.
 """
+
 from __future__ import annotations
 
 import os
@@ -61,18 +62,10 @@ def detect_sqlite_db(env_override: str | None = None) -> str | None:
     else:
         candidates.append(home / "Zotero" / "zotero.sqlite")
         # Linux Snap
-        candidates.append(
-            home / "snap" / "zotero-snap" / "common" / "Zotero" / "zotero.sqlite"
-        )
+        candidates.append(home / "snap" / "zotero-snap" / "common" / "Zotero" / "zotero.sqlite")
         # Linux Flatpak
         candidates.append(
-            home
-            / ".var"
-            / "app"
-            / "org.zotero.Zotero"
-            / "data"
-            / "Zotero"
-            / "zotero.sqlite"
+            home / ".var" / "app" / "org.zotero.Zotero" / "data" / "Zotero" / "zotero.sqlite"
         )
     for p in candidates:
         if p.exists():

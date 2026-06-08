@@ -2,6 +2,7 @@
 
 Per DEVELOPMENT.md §5.2: models/ can import error classes (pure data dependency).
 """
+
 from __future__ import annotations
 
 import builtins
@@ -28,7 +29,12 @@ class FeedItemFieldsConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     list: builtins.list[str] = [
-        "feed_id", "item_id", "title", "date", "url", "read_time",
+        "feed_id",
+        "item_id",
+        "title",
+        "date",
+        "url",
+        "read_time",
     ]
 
 
@@ -113,7 +119,7 @@ class Config(BaseModel):
                 raise UnsupportedLibraryTypeError(
                     f"profile {name!r}: library_type='group' is incompatible with [webdav].",
                     hint="Zotero WebDAV sync does not support group libraries. "
-                         "Remove [webdav] section or change library_type to 'user'.",
+                    "Remove [webdav] section or change library_type to 'user'.",
                     context={"profile": name, "library_type": "group"},
                 )
         return self

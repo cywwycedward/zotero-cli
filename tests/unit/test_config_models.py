@@ -37,7 +37,12 @@ class TestFeedItemFieldsConfig:
     def test_default_list(self) -> None:
         cfg = FeedItemFieldsConfig()
         assert cfg.list == [
-            "feed_id", "item_id", "title", "date", "url", "read_time",
+            "feed_id",
+            "item_id",
+            "title",
+            "date",
+            "url",
+            "read_time",
         ]
 
     def test_override_list(self) -> None:
@@ -58,25 +63,31 @@ class TestWebDAVConfig:
         assert cfg.timeout == 120
         assert cfg.verify_ssl is True
 
-    @pytest.mark.parametrize("inp,expected", [
-        ("", ""),
-        ("/zotero", "/zotero"),
-        ("/zotero/", "/zotero"),
-        ("/a/b/c", "/a/b/c"),
-        ("/a/b/c/", "/a/b/c"),
-    ])
+    @pytest.mark.parametrize(
+        "inp,expected",
+        [
+            ("", ""),
+            ("/zotero", "/zotero"),
+            ("/zotero/", "/zotero"),
+            ("/a/b/c", "/a/b/c"),
+            ("/a/b/c/", "/a/b/c"),
+        ],
+    )
     def test_storage_path_normalized(self, inp: str, expected: str) -> None:
         cfg = WebDAVConfig(url="https://x", username="u", password="p", storage_path=inp)
         assert cfg.storage_path == expected
 
-    @pytest.mark.parametrize("bad", [
-        "/",
-        "//zotero",
-        "/a//b",
-        "/..",
-        "/a/../b",
-        "no-slash",
-    ])
+    @pytest.mark.parametrize(
+        "bad",
+        [
+            "/",
+            "//zotero",
+            "/a//b",
+            "/..",
+            "/a/../b",
+            "no-slash",
+        ],
+    )
     def test_storage_path_rejected(self, bad: str) -> None:
         with pytest.raises(ConfigInvalidError):
             WebDAVConfig(url="https://x", username="u", password="p", storage_path=bad)
@@ -141,12 +152,15 @@ class TestProfileConfig:
 
 
 class TestConfig:
-    @pytest.mark.parametrize("library_type,has_webdav,ok", [
-        ("user", False, True),
-        ("user", True, True),
-        ("group", False, True),
-        ("group", True, False),
-    ])
+    @pytest.mark.parametrize(
+        "library_type,has_webdav,ok",
+        [
+            ("user", False, True),
+            ("user", True, True),
+            ("group", False, True),
+            ("group", True, False),
+        ],
+    )
     def test_compatibility_matrix(self, library_type, has_webdav, ok) -> None:
         profile_data: dict = {"api_key": "k", "library_id": "1", "library_type": library_type}
         if has_webdav:
@@ -160,8 +174,10 @@ class TestConfig:
             assert "default" in (ei.value.context or {}).get("profile", "default")
 
     def test_multiple_profiles(self) -> None:
-        cfg = Config(profiles={
-            "default": {"api_key": "k", "library_id": "1", "library_type": "user"},
-            "work": {"api_key": "k2", "library_id": "2", "library_type": "group"},
-        })  # type: ignore[arg-type]
+        cfg = Config(
+            profiles={
+                "default": {"api_key": "k", "library_id": "1", "library_type": "user"},
+                "work": {"api_key": "k2", "library_id": "2", "library_type": "group"},
+            }
+        )  # type: ignore[arg-type]
         assert set(cfg.profiles) == {"default", "work"}
