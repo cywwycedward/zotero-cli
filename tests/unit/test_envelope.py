@@ -39,8 +39,12 @@ class TestErrorObject:
         err = ErrorObject(code="C", message="m", category="user_error")
         d = err.model_dump()
         assert d == {
-            "code": "C", "message": "m", "category": "user_error",
-            "hint": None, "context": None, "cause": None,
+            "code": "C",
+            "message": "m",
+            "category": "user_error",
+            "hint": None,
+            "context": None,
+            "cause": None,
         }
         assert json.loads(err.model_dump_json()) == d
 

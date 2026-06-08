@@ -2,6 +2,7 @@
 
 Design: §9 Audit Log (doc/design.md)
 """
+
 from __future__ import annotations
 
 import gzip
@@ -54,6 +55,7 @@ def write_entry(*, log_path: Path, entry: AuditEntry) -> None:
 
     with log_path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(filtered, ensure_ascii=False, sort_keys=True) + "\n")
+    log_path.chmod(0o600)
 
 
 def _mask_args(obj: object) -> object:

@@ -4,6 +4,7 @@ These constants are used by:
 - CLIError subclasses (models/errors.py) to set exit_code
 - commands/* outermost handler to call sys.exit(...)
 """
+
 from __future__ import annotations
 
 from typing import Final

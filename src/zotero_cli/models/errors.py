@@ -5,6 +5,7 @@ into CLIError subclasses; services don't wrap; commands render Envelope and exit
 
 Per design §9.2: every error code maps to exactly one subclass.
 """
+
 from __future__ import annotations
 
 from typing import Any, Literal

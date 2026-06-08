@@ -4,6 +4,7 @@ Per design §11.4: Zotero date fields use ISO 8601 year, year-month, or full-dat
 strings. This module provides regex constants, validation helpers, and a
 function to convert user-facing date specs into SQL-compatible bounds.
 """
+
 from __future__ import annotations
 
 import calendar

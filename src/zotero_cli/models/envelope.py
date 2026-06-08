@@ -1,4 +1,5 @@
 """JSON envelope models per design §8. All --json output uses Envelope."""
+
 from __future__ import annotations
 
 import re
@@ -34,9 +35,7 @@ class MetaObject(BaseModel):
     @field_validator("command")
     @classmethod
     def _validate_command(cls, v: str) -> str:
-        if not v or not re.fullmatch(
-            r"[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*", v
-        ):
+        if not v or not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*", v):
             raise ValueError(
                 f"command must be a non-empty word or dotted path "
                 f"(e.g. 'schema' or 'items.list'), got: {v!r}"

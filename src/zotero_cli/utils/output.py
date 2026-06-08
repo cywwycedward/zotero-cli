@@ -1,4 +1,5 @@
 """Output rendering for the CLI. Routes envelope data to format-specific renderers."""
+
 from __future__ import annotations
 
 import enum

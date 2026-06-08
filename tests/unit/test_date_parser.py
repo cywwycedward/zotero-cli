@@ -1,4 +1,5 @@
 """Tests for date_parser -- regex patterns, month validator, and DateRange."""
+
 from __future__ import annotations
 
 import pytest
@@ -83,16 +84,12 @@ BOUNDS_CASES = [
 
 
 @pytest.mark.parametrize("s,exp_start,exp_end", BOUNDS_CASES)
-def test_bounds_start(
-    s: str, exp_start: str, exp_end: str
-) -> None:
+def test_bounds_start(s: str, exp_start: str, exp_end: str) -> None:
     assert _to_start_bound(s) == exp_start
 
 
 @pytest.mark.parametrize("s,exp_start,exp_end", BOUNDS_CASES)
-def test_bounds_end(
-    s: str, exp_start: str, exp_end: str
-) -> None:
+def test_bounds_end(s: str, exp_start: str, exp_end: str) -> None:
     assert _to_end_bound(s) == exp_end
 
 
@@ -130,9 +127,7 @@ RANGE_CASES = [
 
 
 @pytest.mark.parametrize("arg,expected", RANGE_CASES)
-def test_date_range_to_sql_bounds(
-    arg: str, expected: DateRange
-) -> None:
+def test_date_range_to_sql_bounds(arg: str, expected: DateRange) -> None:
     assert date_range_to_sql_bounds(arg) == expected
 
 

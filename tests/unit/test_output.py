@@ -1,4 +1,5 @@
 """Tests for the output renderer module."""
+
 from __future__ import annotations
 
 import pytest
@@ -75,16 +76,12 @@ class TestKvList:
             {"key": "DEF", "title": "Second"},
         ]
         env = Envelope.success(data=data, command="items.list", elapsed_ms=100)
-        result = render(
-            envelope=env, mode=OutputMode.KV_LIST, json_mode=False, quiet=False
-        )
+        result = render(envelope=env, mode=OutputMode.KV_LIST, json_mode=False, quiet=False)
         assert result == "key: ABC\ntitle: First\n\nkey: DEF\ntitle: Second\n"
 
     def test_empty_list_returns_empty_string(self) -> None:
         env = Envelope.success(data=[], command="items.list", elapsed_ms=100)
-        result = render(
-            envelope=env, mode=OutputMode.KV_LIST, json_mode=False, quiet=False
-        )
+        result = render(envelope=env, mode=OutputMode.KV_LIST, json_mode=False, quiet=False)
         assert result == ""
 
 
@@ -119,9 +116,7 @@ class TestTree:
             ],
         }
         env = Envelope.success(data=data, command="collections.tree", elapsed_ms=100)
-        result = render(
-            envelope=env, mode=OutputMode.TREE, json_mode=False, quiet=False
-        )
+        result = render(envelope=env, mode=OutputMode.TREE, json_mode=False, quiet=False)
         expected = "Root\n├── Child1\n│   └── Grandchild\n└── Child2\n"
         assert result == expected
 
@@ -132,9 +127,7 @@ class TestSummary:
     def test_create_success(self) -> None:
         data = {"successful": ["ABC", "DEF"], "failed": []}
         env = Envelope.success(data=data, command="items.create", elapsed_ms=100)
-        result = render(
-            envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False
-        )
+        result = render(envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False)
         expected = "✓ Created 2 items:\n  ABC, DEF\n"
         assert result == expected
 
@@ -144,40 +137,28 @@ class TestSummary:
             "failed": [{"code": "INVALID_FIELD", "message": "Title is required"}],
         }
         env = Envelope.success(data=data, command="items.create", elapsed_ms=100)
-        result = render(
-            envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False
-        )
+        result = render(envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False)
         expected = (
-            "✓ Created 1 item:\n"
-            "  ABC\n"
-            "\n"
-            "✗ 1 item failed:\n"
-            "  INVALID_FIELD: Title is required\n"
+            "✓ Created 1 item:\n  ABC\n\n✗ 1 item failed:\n  INVALID_FIELD: Title is required\n"
         )
         assert result == expected
 
     def test_update_verb(self) -> None:
         data = {"successful": ["XYZ"], "failed": []}
         env = Envelope.success(data=data, command="items.update", elapsed_ms=100)
-        result = render(
-            envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False
-        )
+        result = render(envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False)
         assert "Updated" in result
 
     def test_delete_verb(self) -> None:
         data = {"successful": ["XYZ"], "failed": []}
         env = Envelope.success(data=data, command="items.delete", elapsed_ms=100)
-        result = render(
-            envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False
-        )
+        result = render(envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False)
         assert "Deleted" in result
 
     def test_attach_verb(self) -> None:
         data = {"successful": ["XYZ"], "failed": []}
         env = Envelope.success(data=data, command="items.attach", elapsed_ms=100)
-        result = render(
-            envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False
-        )
+        result = render(envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=False)
         assert "Attached" in result
 
 
@@ -187,9 +168,7 @@ class TestYaml:
     def test_masks_api_key(self) -> None:
         data = {"api_key": "abcdef123456", "name": "test"}
         env = Envelope.success(data=data, command="config.show", elapsed_ms=100)
-        result = render(
-            envelope=env, mode=OutputMode.YAML, json_mode=False, quiet=False
-        )
+        result = render(envelope=env, mode=OutputMode.YAML, json_mode=False, quiet=False)
         parsed = _yaml.safe_load(result)
         assert parsed["api_key"] == "abcd****"
         assert parsed["name"] == "test"
@@ -202,9 +181,7 @@ class TestYaml:
             }
         }
         env = Envelope.success(data=data, command="config.show", elapsed_ms=100)
-        result = render(
-            envelope=env, mode=OutputMode.YAML, json_mode=False, quiet=False
-        )
+        result = render(envelope=env, mode=OutputMode.YAML, json_mode=False, quiet=False)
         parsed = _yaml.safe_load(result)
         assert parsed["webdav"]["password"] == "****"
         assert parsed["webdav"]["url"] == "http://example.com"
@@ -212,9 +189,7 @@ class TestYaml:
     def test_quiet_unsupported_for_yaml(self) -> None:
         data = {"key": "ABC", "title": "Hello"}
         env = Envelope.success(data=data, command="items.show", elapsed_ms=100)
-        result = render(
-            envelope=env, mode=OutputMode.YAML, json_mode=False, quiet=True
-        )
+        result = render(envelope=env, mode=OutputMode.YAML, json_mode=False, quiet=True)
         # quiet mode returns key output, not YAML
         assert result == "ABC\n"
 
@@ -304,17 +279,13 @@ class TestQuiet:
     def test_kv_list_outputs_keys_one_per_line(self) -> None:
         data = [{"key": "ABC", "title": "First"}, {"key": "DEF", "title": "Second"}]
         env = Envelope.success(data=data, command="items.list", elapsed_ms=100)
-        result = render(
-            envelope=env, mode=OutputMode.KV_LIST, json_mode=False, quiet=True
-        )
+        result = render(envelope=env, mode=OutputMode.KV_LIST, json_mode=False, quiet=True)
         assert result == "ABC\nDEF\n"
 
     def test_kv_single_outputs_one_key(self) -> None:
         data = {"key": "ABC", "title": "Hello"}
         env = Envelope.success(data=data, command="items.show", elapsed_ms=100)
-        result = render(
-            envelope=env, mode=OutputMode.KV, json_mode=False, quiet=True
-        )
+        result = render(envelope=env, mode=OutputMode.KV, json_mode=False, quiet=True)
         assert result == "ABC\n"
 
     def test_summary_uses_affected_keys(self) -> None:
@@ -324,9 +295,7 @@ class TestQuiet:
             elapsed_ms=100,
             meta_extra={"affected_keys": ["KEY1", "KEY2", "KEY3"]},
         )
-        result = render(
-            envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=True
-        )
+        result = render(envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=True)
         assert result == "KEY1\nKEY2\nKEY3\n"
 
     def test_summary_empty_affected_keys_outputs_zero_bytes(self) -> None:
@@ -336,9 +305,7 @@ class TestQuiet:
             elapsed_ms=100,
             meta_extra={"affected_keys": []},
         )
-        result = render(
-            envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=True
-        )
+        result = render(envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=True)
         assert result == ""
 
     def test_tree_outputs_root_and_children_keys(self) -> None:
@@ -352,16 +319,12 @@ class TestQuiet:
             ],
         }
         env = Envelope.success(data=data, command="collections.tree", elapsed_ms=100)
-        result = render(
-            envelope=env, mode=OutputMode.TREE, json_mode=False, quiet=True
-        )
+        result = render(envelope=env, mode=OutputMode.TREE, json_mode=False, quiet=True)
         assert result == "ROOT\nC1\nC2\n"
 
     def test_empty_list_quiet_returns_empty(self) -> None:
         env = Envelope.success(data=[], command="items.list", elapsed_ms=100)
-        result = render(
-            envelope=env, mode=OutputMode.KV_LIST, json_mode=False, quiet=True
-        )
+        result = render(envelope=env, mode=OutputMode.KV_LIST, json_mode=False, quiet=True)
         assert result == ""
 
     def test_write_no_affected_keys_returns_empty(self) -> None:
@@ -370,9 +333,7 @@ class TestQuiet:
             command="items.create",
             elapsed_ms=100,
         )
-        result = render(
-            envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=True
-        )
+        result = render(envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=True)
         assert result == ""
 
     def test_collections_update_affected_keys(self) -> None:
@@ -382,9 +343,7 @@ class TestQuiet:
             elapsed_ms=100,
             meta_extra={"affected_keys": ["COL1", "COL2"]},
         )
-        result = render(
-            envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=True
-        )
+        result = render(envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=True)
         assert result == "COL1\nCOL2\n"
 
     def test_tags_delete_affected_keys(self) -> None:
@@ -394,9 +353,7 @@ class TestQuiet:
             elapsed_ms=100,
             meta_extra={"affected_keys": ["TAG1"]},
         )
-        result = render(
-            envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=True
-        )
+        result = render(envelope=env, mode=OutputMode.SUMMARY, json_mode=False, quiet=True)
         assert result == "TAG1\n"
 
 
@@ -408,9 +365,7 @@ class TestDefaultError:
 
         err = ItemNotFoundError("Item not found", hint="try items list")
         env = Envelope.failure(err, command="items.show", elapsed_ms=50)
-        result = render(
-            envelope=env, mode=OutputMode.KV, json_mode=False, quiet=False
-        )
+        result = render(envelope=env, mode=OutputMode.KV, json_mode=False, quiet=False)
         expected = "✗ Error: ITEM_NOT_FOUND\n  Item not found\n\n  Hint: try items list\n"
         assert result == expected
 
@@ -419,8 +374,6 @@ class TestDefaultError:
 
         err = ItemNotFoundError("Item not found")
         env = Envelope.failure(err, command="items.show", elapsed_ms=50)
-        result = render(
-            envelope=env, mode=OutputMode.KV, json_mode=False, quiet=False
-        )
+        result = render(envelope=env, mode=OutputMode.KV, json_mode=False, quiet=False)
         expected = "✗ Error: ITEM_NOT_FOUND\n  Item not found\n"
         assert result == expected
