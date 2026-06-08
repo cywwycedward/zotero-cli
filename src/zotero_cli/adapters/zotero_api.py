@@ -280,6 +280,17 @@ class ZoteroAPI:
         except zerr.PyZoteroError as e:
             raise _map_pyzotero_exception(e) from e
 
+    def export_items(self, export_format: str, *, collection: str | None = None) -> bytes:
+        """Export items in the specified format. Returns raw bytes."""
+        try:
+            kwargs: dict[str, Any] = {"format": export_format, "content": "bib"}
+            if collection:
+                kwargs["collection"] = collection
+            result: str = self._zot.items(**kwargs)
+            return result.encode("utf-8")
+        except zerr.PyZoteroError as e:
+            raise _map_pyzotero_exception(e) from e
+
 
 # ── Helper: normalize pyzotero batch result ────────────────────────────────
 

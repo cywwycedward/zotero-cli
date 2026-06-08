@@ -4,6 +4,7 @@ Per DEVELOPMENT.md §5.2: all commands go through run_command for stdout/stderr 
 """
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Annotated, Any, Callable
 
 import typer
@@ -114,3 +115,72 @@ def show_item(
 
     field_filter = None if all_fields else load_config(profile=options.profile).item_fields.list
     _invoke(ctx, "items.show", OutputMode.KV, work, field_filter=field_filter)
+
+
+# ── export ─────────────────────────────────────────────────────────────────
+
+
+@app.command("export")
+def export_items(
+    ctx: typer.Context,
+    export_format: Annotated[str, typer.Option("--format", help="bibtex / ris / csljson / ...")] = "bibtex",
+    collection: Annotated[str | None, typer.Option("--collection", help="Filter by collection key")] = None,
+    output: Annotated[Path | None, typer.Option("--output", help="Write to file instead of stdout")] = None,
+) -> None:
+    """Export items in the requested format (bibtex, ris, csljson, etc.)."""
+    import sys
+    import time
+    from pathlib import Path
+
+    from zotero_cli.commands._runner import emit_failure
+    from zotero_cli.models.envelope import Envelope
+    from zotero_cli.models.errors import CLIError, MutuallyExclusiveArgsError
+    from zotero_cli.services.export_service import ExportService
+
+    options: GlobalOptions = ctx.obj
+
+    if options.json_mode and options.quiet:
+        err = MutuallyExclusiveArgsError(
+            "--json and --quiet cannot be combined",
+            hint="Use --json for full envelope.",
+        )
+        emit_failure(err, "items.export", 0, options)
+        sys.exit(err.exit_code)
+    if options.quiet:
+        err = MutuallyExclusiveArgsError(
+            "--quiet is not supported for export",
+            hint="export writes raw content; --quiet has no key concept.",
+        )
+        emit_failure(err, "items.export", 0, options)
+        sys.exit(err.exit_code)
+
+    start = time.perf_counter()
+    try:
+        profile = load_config(profile=options.profile, config_path=options.config_path)
+        api = ZoteroAPI(profile)
+        svc = ExportService(api)
+        result = svc.export(export_format, collection=collection)
+    except CLIError as err:
+        elapsed = int((time.perf_counter() - start) * 1000)
+        emit_failure(err, "items.export", elapsed, options)
+        sys.exit(err.exit_code)
+    elapsed = int((time.perf_counter() - start) * 1000)
+
+    raw_bytes: bytes = result["data"]
+    byte_size = len(raw_bytes)
+
+    if options.json_mode:
+        env = Envelope.success(
+            data={"format": export_format, "content": raw_bytes.decode("utf-8", errors="replace"), "byte_size": byte_size},
+            command="items.export", elapsed_ms=elapsed,
+            meta_extra=result.get("meta_extra"),
+        )
+        sys.stdout.write(env.model_dump_json(indent=2) + "\n")
+        sys.exit(0)
+
+    if output is not None:
+        output.write_bytes(raw_bytes)
+        sys.stderr.write(f"Exported {byte_size} bytes to {output}\n")
+    else:
+        sys.stdout.buffer.write(raw_bytes)
+    sys.exit(0)
