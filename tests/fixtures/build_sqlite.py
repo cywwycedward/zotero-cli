@@ -8,6 +8,69 @@ from pathlib import Path
 
 OUT = Path(__file__).parent / "zotero_test.sqlite"
 
+
+def build_with_n_items(path: Path, n: int = 1000) -> None:
+    """Build a fixture with a single feed containing n items, for perf tests."""
+    path.unlink(missing_ok=True)
+    db = sqlite3.connect(str(path))
+    db.execute("BEGIN")
+
+    db.executescript("""
+    CREATE TABLE libraries(libraryID INTEGER PRIMARY KEY, type TEXT);
+    CREATE TABLE feeds(
+        libraryID INTEGER PRIMARY KEY, name TEXT, url TEXT,
+        lastUpdate TEXT, lastCheck TEXT, lastCheckError TEXT, refreshInterval INTEGER,
+        FOREIGN KEY(libraryID) REFERENCES libraries(libraryID)
+    );
+    CREATE TABLE items(itemID INTEGER PRIMARY KEY, libraryID INTEGER,
+                       dateAdded TEXT, dateModified TEXT);
+    CREATE TABLE feedItems(
+        itemID INTEGER PRIMARY KEY, guid TEXT UNIQUE,
+        readTime TEXT, translatedTime TEXT,
+        FOREIGN KEY(itemID) REFERENCES items(itemID)
+    );
+    CREATE TABLE fields(fieldID INTEGER PRIMARY KEY, fieldName TEXT);
+    CREATE TABLE itemDataValues(valueID INTEGER PRIMARY KEY, value TEXT);
+    CREATE TABLE itemData(itemID INTEGER, fieldID INTEGER, valueID INTEGER,
+                          PRIMARY KEY(itemID, fieldID));
+    CREATE TABLE creators(creatorID INTEGER PRIMARY KEY, firstName TEXT,
+                          lastName TEXT, fieldMode INTEGER);
+    CREATE TABLE creatorTypes(creatorTypeID INTEGER PRIMARY KEY, creatorType TEXT);
+    CREATE TABLE itemCreators(itemID INTEGER, creatorID INTEGER,
+                              creatorTypeID INTEGER, orderIndex INTEGER,
+                              PRIMARY KEY(itemID, creatorID, orderIndex));
+    """)
+
+    db.execute("INSERT INTO libraries VALUES(1, 'feed')")
+    db.execute("""
+        INSERT INTO feeds VALUES(1, 'Perf Feed', 'https://example.com/perf',
+            '2024-01-01', '2024-01-01', NULL, 60)
+    """)
+    for fid, fname in [(1, "title"), (2, "abstractNote"), (13, "url"), (14, "date")]:
+        db.execute("INSERT INTO fields VALUES(?, ?)", (fid, fname))
+    db.execute("INSERT INTO creatorTypes VALUES(1, 'author')")
+
+    vid = 0
+    for i in range(1, n + 1):
+        month = ((i - 1) % 12) + 1
+        day = ((i - 1) % 28) + 1
+        date_str = f"2024-{month:02d}-{day:02d}"
+        db.execute("INSERT INTO items VALUES(?, 1, ?, ?)", (i, date_str, date_str))
+        db.execute(
+            "INSERT INTO feedItems VALUES(?, ?, NULL, NULL)",
+            (i, f"guid-{i}"),
+        )
+        vid += 1
+        db.execute("INSERT INTO itemDataValues VALUES(?, ?)", (vid, f"Title {i}"))
+        db.execute("INSERT INTO itemData VALUES(?, 1, ?)", (i, vid))
+        vid += 1
+        db.execute("INSERT INTO itemDataValues VALUES(?, ?)", (vid, date_str))
+        db.execute("INSERT INTO itemData VALUES(?, 14, ?)", (i, vid))
+
+    db.commit()
+    db.close()
+
+
 if __name__ == "__main__":
     OUT.unlink(missing_ok=True)
     db = sqlite3.connect(str(OUT))
