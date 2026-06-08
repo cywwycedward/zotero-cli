@@ -14,8 +14,18 @@ class TestList:
     def test_builds_tree_from_flat(self, svc) -> None:
         svc._api.collections.return_value = [
             {"key": "R", "data": {"name": "Root"}, "meta": {"numItems": 10}},
-            {"key": "C1", "data": {"name": "Child1"}, "parentCollection": "R", "meta": {"numItems": 5}},
-            {"key": "C2", "data": {"name": "Child2"}, "parentCollection": "R", "meta": {"numItems": 3}},
+            {
+                "key": "C1",
+                "data": {"name": "Child1"},
+                "parentCollection": "R",
+                "meta": {"numItems": 5},
+            },
+            {
+                "key": "C2",
+                "data": {"name": "Child2"},
+                "parentCollection": "R",
+                "meta": {"numItems": 3},
+            },
         ]
         result = svc.list()
         root = result["data"][0]
@@ -26,7 +36,12 @@ class TestList:
     def test_orphans_become_roots(self, svc) -> None:
         svc._api.collections.return_value = [
             {"key": "A", "data": {"name": "A"}, "meta": {"numItems": 1}},
-            {"key": "B", "data": {"name": "B"}, "parentCollection": "NONEXIST", "meta": {"numItems": 2}},
+            {
+                "key": "B",
+                "data": {"name": "B"},
+                "parentCollection": "NONEXIST",
+                "meta": {"numItems": 2},
+            },
         ]
         result = svc.list()
         assert len(result["data"]) == 2

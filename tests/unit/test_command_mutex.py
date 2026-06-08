@@ -1,4 +1,5 @@
 """Verify --json + --quiet mutex is enforced before any service call."""
+
 import json
 
 import pytest
@@ -18,6 +19,7 @@ def cfg_at(monkeypatch, tmp_path):
     config_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
     from zotero_cli.adapters.config_store import write_toml
+
     write_toml(
         config_dir / "config.toml",
         {"default": {"api_key": "k", "library_id": "1", "library_type": "user"}},

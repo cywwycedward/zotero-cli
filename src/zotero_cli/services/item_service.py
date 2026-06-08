@@ -3,7 +3,9 @@
 Per design §7.1: services return dict/list data, never format output.
 Per DEVELOPMENT.md §4.2: all public methods return TypedDicts from models/results.py.
 """
-from typing import Any, List
+
+import builtins
+from typing import Any
 
 from zotero_cli.adapters.zotero_api import ZoteroAPI
 from zotero_cli.models.errors import ApiServerError, CLIError, from_code
@@ -24,18 +26,27 @@ class ItemService:
     # -- Read --
 
     def list(
-        self, *, limit: int = 100, start: int = 0,
-        collection: str | None = None, tag: str | None = None,
+        self,
+        *,
+        limit: int = 100,
+        start: int = 0,
+        collection: str | None = None,
+        tag: str | None = None,
     ) -> ListServiceResult:
         items = self._api.items_top(
-            limit=limit, start=start, collection=collection, tag=tag,
+            limit=limit,
+            start=start,
+            collection=collection,
+            tag=tag,
         )
         total = self._api.count_items(collection=collection, tag=tag)
         return {
             "data": items,
             "meta_extra": {
-                "count": len(items), "total": total,
-                "limit": limit, "start": start,
+                "count": len(items),
+                "total": total,
+                "limit": limit,
+                "start": start,
                 "next_start": start + limit if start + limit < total else None,
                 "library_id": self._api.library_id,
                 "library_version": self._api.last_modified_version(),
@@ -43,14 +54,20 @@ class ItemService:
         }
 
     def search(
-        self, query: str, *, limit: int = 100, start: int = 0,
+        self,
+        query: str,
+        *,
+        limit: int = 100,
+        start: int = 0,
     ) -> ListServiceResult:
         items = self._api.search_items(query, limit=limit, start=start)
         return {
             "data": items,
             "meta_extra": {
-                "count": len(items), "total": len(items),
-                "limit": limit, "start": start,
+                "count": len(items),
+                "total": len(items),
+                "limit": limit,
+                "start": start,
                 "next_start": None,
                 "library_id": self._api.library_id,
                 "library_version": self._api.last_modified_version(),
@@ -63,7 +80,7 @@ class ItemService:
 
     # -- Write --
 
-    def create(self, payloads: List[dict[str, Any]]) -> MutationServiceResult:
+    def create(self, payloads: builtins.list[dict[str, Any]]) -> MutationServiceResult:
         result = self._api.create_items(payloads)
         affected = [s["key"] for s in result["successful"]]
         return {
@@ -79,7 +96,8 @@ class ItemService:
         if data["failed"]:
             failed = data["failed"][0]
             raise from_code(
-                failed["code"], failed["message"],
+                failed["code"],
+                failed["message"],
                 context=failed.get("context"),
             )
         raise ApiServerError(
@@ -97,16 +115,15 @@ class ItemService:
         return {
             "data": {
                 "successful": [
-                    {"index": 0, "key": key,
-                     "version": item.get("version", 0),
-                     "data": merged},
+                    {"index": 0, "key": key, "version": item.get("version", 0), "data": merged},
                 ],
-                "unchanged": [], "failed": [],
+                "unchanged": [],
+                "failed": [],
             },
             "meta_extra": {"affected_keys": [key]},
         }
 
-    def delete(self, keys: List[str]) -> MutationServiceResult:
+    def delete(self, keys: builtins.list[str]) -> MutationServiceResult:
         successful: list[Any] = []
         failed: list[Any] = []
         for idx, item_key in enumerate(keys):
@@ -115,13 +132,18 @@ class ItemService:
                 self._api.delete_item(item)
                 successful.append({"index": idx, "key": item_key, "version": 0})
             except CLIError as e:
-                failed.append({
-                    "index": idx, "code": e.code, "message": e.message,
-                })
+                failed.append(
+                    {
+                        "index": idx,
+                        "code": e.code,
+                        "message": e.message,
+                    }
+                )
         return {
             "data": {
                 "successful": successful,
-                "unchanged": [], "failed": failed,
+                "unchanged": [],
+                "failed": failed,
             },
             "meta_extra": {"affected_keys": [s["key"] for s in successful]},
         }

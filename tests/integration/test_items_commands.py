@@ -1,4 +1,5 @@
 """Integration tests for items commands via CliRunner on full cli.app."""
+
 from __future__ import annotations
 
 import json
@@ -21,6 +22,7 @@ def tmp_profile(monkeypatch, tmp_path):
     cfg.parent.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
     from zotero_cli.adapters.config_store import write_toml
+
     write_toml(
         cfg,
         {"default": {"api_key": "k", "library_id": "1", "library_type": "user"}},
@@ -75,6 +77,7 @@ class TestItemsList:
 class TestItemsShow:
     def test_not_found_default_mode(self, mocker, runner, tmp_profile) -> None:
         from zotero_cli.models.errors import ItemNotFoundError
+
         mocker.patch(
             "zotero_cli.adapters.zotero_api.ZoteroAPI.item",
             side_effect=ItemNotFoundError("Item 'NOPE' not found"),
@@ -87,6 +90,7 @@ class TestItemsShow:
 
     def test_not_found_json_mode(self, mocker, runner, tmp_profile) -> None:
         from zotero_cli.models.errors import ItemNotFoundError
+
         mocker.patch(
             "zotero_cli.adapters.zotero_api.ZoteroAPI.item",
             side_effect=ItemNotFoundError("Item 'NOPE' not found"),

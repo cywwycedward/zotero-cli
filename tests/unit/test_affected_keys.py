@@ -1,4 +1,5 @@
 """Parameterized tests for meta.affected_keys edge cases per design §7.2.1."""
+
 from unittest.mock import MagicMock
 
 import pytest
@@ -8,15 +9,20 @@ from zotero_cli.services.item_service import ItemService
 from zotero_cli.services.tag_service import TagService
 
 
-@pytest.mark.parametrize("success,unch,fail,expected", [
-    ([{"key": "A"}, {"key": "B"}], [], [], ["A", "B"]),
-    ([{"key": "A"}], [{"key": "B"}], [{"key": "C"}], ["A"]),
-    ([], [], [], []),
-])
+@pytest.mark.parametrize(
+    "success,unch,fail,expected",
+    [
+        ([{"key": "A"}, {"key": "B"}], [], [], ["A", "B"]),
+        ([{"key": "A"}], [{"key": "B"}], [{"key": "C"}], ["A"]),
+        ([], [], [], []),
+    ],
+)
 def test_item_create_affected_keys(success, unch, fail, expected) -> None:
     api = MagicMock()
     api.create_items.return_value = {
-        "successful": success, "unchanged": unch, "failed": fail,
+        "successful": success,
+        "unchanged": unch,
+        "failed": fail,
     }
     svc = ItemService(api)
     result = svc.create([{}])

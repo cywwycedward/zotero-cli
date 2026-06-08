@@ -14,7 +14,10 @@ def test_list_service_result_required_fields() -> None:
     r: ListServiceResult = {
         "data": [{"key": "ABC"}],
         "meta_extra": {
-            "count": 1, "total": 1, "limit": 100, "start": 0,
+            "count": 1,
+            "total": 1,
+            "limit": 100,
+            "start": 0,
             "next_start": None,
         },
     }
@@ -47,12 +50,18 @@ def test_mutation_successful_optional_data() -> None:
 
 def test_collection_node_recursive() -> None:
     child: CollectionNode = {
-        "key": "C1", "name": "Child", "items_count": 5,
-        "parent_key": "ROOT", "children": [],
+        "key": "C1",
+        "name": "Child",
+        "items_count": 5,
+        "parent_key": "ROOT",
+        "children": [],
     }
     root: CollectionNode = {
-        "key": "ROOT", "name": "Root", "items_count": 10,
-        "parent_key": None, "children": [child],
+        "key": "ROOT",
+        "name": "Root",
+        "items_count": 10,
+        "parent_key": None,
+        "children": [child],
     }
     result: CollectionTreeServiceResult = {"data": [root]}
     assert result["data"][0]["children"][0]["key"] == "C1"

@@ -1,5 +1,7 @@
 """CollectionService — CRUD + tree building for collections."""
-from typing import Any, Dict, List
+
+import builtins
+from typing import Any
 
 from zotero_cli.adapters.zotero_api import ZoteroAPI
 from zotero_cli.models.results import (
@@ -18,9 +20,9 @@ class CollectionService:
 
     def list(self) -> CollectionTreeServiceResult:
         raw = self._api.collections()
-        by_key: Dict[str, dict[str, Any]] = {c["key"]: c for c in raw}
-        children_map: Dict[str, List[dict[str, Any]]] = {}
-        roots: List[dict[str, Any]] = []
+        by_key: dict[str, dict[str, Any]] = {c["key"]: c for c in raw}
+        children_map: dict[str, list[dict[str, Any]]] = {}
+        roots: list[dict[str, Any]] = []
         for c in raw:
             parent = c.get("parentCollection")
             if parent is False or parent is None or parent == "":
@@ -38,7 +40,9 @@ class CollectionService:
                 "key": key,
                 "name": node.get("data", {}).get("name", node.get("name", "")),
                 "items_count": node.get("meta", {}).get("numItems", node.get("numItems", 0)),
-                "parent_key": node.get("parentCollection") if node.get("parentCollection") else None,
+                "parent_key": node.get("parentCollection")
+                if node.get("parentCollection")
+                else None,
                 "children": [_build(c) for c in children_map.get(key, [])],
             }
 
@@ -49,6 +53,7 @@ class CollectionService:
         match = next((c for c in raw if c.get("key") == key), None)
         if match is None:
             from zotero_cli.models.errors import CollectionNotFoundError
+
             raise CollectionNotFoundError(f"Collection {key!r} not found")
         return {"data": match}
 
@@ -56,18 +61,26 @@ class CollectionService:
         result = self._api.create_collection(name, parent)
         key = result.get("key", "")
         return {
-            "data": {"successful": [{"index": 0, "key": key, "version": 0}], "unchanged": [], "failed": []},
+            "data": {
+                "successful": [{"index": 0, "key": key, "version": 0}],
+                "unchanged": [],
+                "failed": [],
+            },
             "meta_extra": {"affected_keys": [key]},
         }
 
     def delete(self, key: str) -> MutationServiceResult:
         self._api.delete_collection(key)
         return {
-            "data": {"successful": [{"index": 0, "key": key, "version": 0}], "unchanged": [], "failed": []},
+            "data": {
+                "successful": [{"index": 0, "key": key, "version": 0}],
+                "unchanged": [],
+                "failed": [],
+            },
             "meta_extra": {"affected_keys": [key]},
         }
 
-    def add_items(self, coll_key: str, item_keys: List[str]) -> MutationServiceResult:
+    def add_items(self, coll_key: str, item_keys: builtins.list[str]) -> MutationServiceResult:
         successful: list[Any] = []
         for idx, ik in enumerate(item_keys):
             self._api.add_to_collection(ik, coll_key)
@@ -77,7 +90,7 @@ class CollectionService:
             "meta_extra": {"affected_keys": [coll_key]},
         }
 
-    def remove_items(self, coll_key: str, item_keys: List[str]) -> MutationServiceResult:
+    def remove_items(self, coll_key: str, item_keys: builtins.list[str]) -> MutationServiceResult:
         successful: list[Any] = []
         for idx, ik in enumerate(item_keys):
             self._api.remove_from_collection(ik, coll_key)

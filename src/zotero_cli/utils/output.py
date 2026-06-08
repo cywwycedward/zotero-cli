@@ -262,6 +262,15 @@ def _determine_verb(command: str) -> str:
         "items.update": "Updated",
         "items.delete": "Deleted",
         "items.attach": "Attached",
+        "collections.create": "Created",
+        "collections.update": "Updated",
+        "collections.delete": "Deleted",
+        "collections.add_items": "Added items to",
+        "collections.remove_items": "Removed items from",
+        "tags.add": "Tagged",
+        "tags.remove": "Untagged",
+        "tags.rename": "Renamed",
+        "tags.delete": "Deleted",
     }
     for prefix, verb in verb_map.items():
         if command.startswith(prefix):

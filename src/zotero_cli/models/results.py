@@ -4,6 +4,7 @@ these TypedDicts (no bare dict[str, Any]).
 Per design §8.1 / §8.2 / §7.2.1: services return (data, meta_extra) split, where
 data goes into envelope.data and meta_extra is merged into envelope.meta.
 """
+
 from __future__ import annotations
 
 from typing import Any, NotRequired, TypedDict
@@ -90,6 +91,7 @@ class DryRunServiceResult(TypedDict):
 
 class ExportServiceResult(TypedDict):
     """Raw export content; command layer writes to stdout or --output file."""
+
     data: bytes
     meta_extra: NotRequired[dict[str, Any]]
 
@@ -99,6 +101,7 @@ class ExportServiceResult(TypedDict):
 
 class CollectionNode(TypedDict):
     """Recursive collection tree node, used by collections list (mode=TREE)."""
+
     key: str
     name: str
     items_count: int

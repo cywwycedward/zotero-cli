@@ -3,6 +3,7 @@
 Per design §10.0.2: all Zotero Web API calls go through this adapter.
 Per DEVELOPMENT.md §4.3: pyzotero exceptions are translated to CLIError subclasses.
 """
+
 from __future__ import annotations
 
 from typing import Any, Literal, TypeAlias
@@ -85,6 +86,18 @@ def _map_pyzotero_exception(exc: Exception) -> CLIError:
     )
 
 
+# ── Helper: parse pyzotero return values ───────────────────────────────────
+
+
+def _pyzotero_parse(result: object) -> Any:
+    """Parse pyzotero return value that may be str (JSON) or already parsed list."""
+    if isinstance(result, str):
+        import json
+
+        return json.loads(result)
+    return result
+
+
 # ── Task 2: ZoteroAPI ──────────────────────────────────────────────────────
 
 
@@ -106,13 +119,19 @@ class ZoteroAPI:
     # -- Item read methods --
 
     def items_top(
-        self, *, limit: int = 100, start: int = 0,
-        collection: str | None = None, tag: str | None = None,
+        self,
+        *,
+        limit: int = 100,
+        start: int = 0,
+        collection: str | None = None,
+        tag: str | None = None,
     ) -> list[PyzoteroResponse]:
         """List top-level items (excludes attachment/note children)."""
         try:
             kwargs: dict[str, Any] = {
-                "limit": limit, "start": start, "itemType": "-attachment || note",
+                "limit": limit,
+                "start": start,
+                "itemType": "-attachment || note",
             }
             if collection:
                 kwargs["collectionID"] = collection
@@ -123,8 +142,12 @@ class ZoteroAPI:
             raise _map_pyzotero_exception(e) from e
 
     def items(
-        self, *, limit: int = 100, start: int = 0,
-        collection: str | None = None, tag: str | None = None,
+        self,
+        *,
+        limit: int = 100,
+        start: int = 0,
+        collection: str | None = None,
+        tag: str | None = None,
     ) -> list[PyzoteroResponse]:
         """List all items."""
         try:
@@ -147,7 +170,11 @@ class ZoteroAPI:
             raise _map_pyzotero_exception(e) from e
 
     def search_items(
-        self, query: str, *, limit: int = 100, start: int = 0,
+        self,
+        query: str,
+        *,
+        limit: int = 100,
+        start: int = 0,
     ) -> list[PyzoteroResponse]:
         """Search items by query string."""
         try:
@@ -163,7 +190,9 @@ class ZoteroAPI:
             raise _map_pyzotero_exception(e) from e
 
     def count_items(
-        self, collection: str | None = None, tag: str | None = None,
+        self,
+        collection: str | None = None,
+        tag: str | None = None,
     ) -> int:
         """Return item count, optionally filtered."""
         try:
@@ -213,8 +242,7 @@ class ZoteroAPI:
     def collections(self) -> list[PyzoteroResponse]:
         """List all collections."""
         try:
-            import json
-            return json.loads(self._zot.collections())  # type: ignore[no-any-return]
+            return _pyzotero_parse(self._zot.collections())  # type: ignore[no-any-return]
         except zerr.PyZoteroError as e:
             raise _map_pyzotero_exception(e) from e
 
@@ -231,9 +259,9 @@ class ZoteroAPI:
     def delete_collection(self, key: str) -> bool:
         """Delete a collection by key. Returns True on success."""
         try:
-            import json
+
             # pyzotero needs the collection dict; use collections list to find it
-            colls = json.loads(self._zot.collections())
+            colls = _pyzotero_parse(self._zot.collections())
             target = next((c for c in colls if c.get("key") == key), None)
             if target is None:
                 raise ItemNotFoundError(f"Collection {key!r} not found")
@@ -267,8 +295,7 @@ class ZoteroAPI:
     def tags(self) -> list[PyzoteroResponse]:
         """List all tags."""
         try:
-            import json
-            return json.loads(self._zot.tags())  # type: ignore[no-any-return]
+            return _pyzotero_parse(self._zot.tags())  # type: ignore[no-any-return]
         except zerr.PyZoteroError as e:
             raise _map_pyzotero_exception(e) from e
 
@@ -280,14 +307,23 @@ class ZoteroAPI:
         except zerr.PyZoteroError as e:
             raise _map_pyzotero_exception(e) from e
 
-    def export_items(self, export_format: str, *, collection: str | None = None) -> bytes:
+    def export_items(
+        self, export_format: str, *,
+        collection: str | None = None, tag: str | None = None,
+    ) -> bytes:
         """Export items in the specified format. Returns raw bytes."""
         try:
             kwargs: dict[str, Any] = {"format": export_format, "content": "bib"}
             if collection:
                 kwargs["collection"] = collection
-            result: str = self._zot.items(**kwargs)
-            return result.encode("utf-8")
+            if tag:
+                kwargs["tag"] = tag
+            result = self._zot.items(**kwargs)
+            if isinstance(result, str):
+                return result.encode("utf-8")
+            if isinstance(result, bytes):
+                return result
+            return str(result).encode("utf-8")
         except zerr.PyZoteroError as e:
             raise _map_pyzotero_exception(e) from e
 
@@ -296,11 +332,14 @@ class ZoteroAPI:
 
 
 def _normalize_batch_result(
-    result: dict[str, Any], payloads: list[PyzoteroTemplate],
+    result: dict[str, Any],
+    payloads: list[PyzoteroTemplate],
 ) -> dict[str, Any]:
     """Normalize pyzotero's create_items result into {successful, unchanged, failed}."""
     normalized: dict[str, list[dict[str, Any]]] = {
-        "successful": [], "unchanged": [], "failed": [],
+        "successful": [],
+        "unchanged": [],
+        "failed": [],
     }
 
     successful = result.get("successful", {})
@@ -312,17 +351,23 @@ def _normalize_batch_result(
 
         if idx in successful or key in successful:
             entry_key = successful.get(idx) or successful.get(key, "")
-            normalized["successful"].append({
-                "index": idx, "key": str(entry_key), "version": 0,
-            })
+            normalized["successful"].append(
+                {
+                    "index": idx,
+                    "key": str(entry_key),
+                    "version": 0,
+                }
+            )
         elif unchanged and key in unchanged:
             normalized["unchanged"].append({"index": idx, "key": key})
         elif failed and key in failed:
             fail_info = failed[key] if isinstance(failed, dict) else str(failed)
-            normalized["failed"].append({
-                "index": idx,
-                "code": "INVALID_ITEM_TYPE",
-                "message": str(fail_info),
-            })
+            normalized["failed"].append(
+                {
+                    "index": idx,
+                    "code": "INVALID_ITEM_TYPE",
+                    "message": str(fail_info),
+                }
+            )
 
     return normalized

@@ -41,7 +41,10 @@ class TestList:
 
         svc.list(collection="COLL1")
         mock_api.items_top.assert_called_once_with(
-            limit=100, start=0, collection="COLL1", tag=None,
+            limit=100,
+            start=0,
+            collection="COLL1",
+            tag=None,
         )
 
 
@@ -72,7 +75,8 @@ class TestCreate:
     def test_single_success(self, svc, mock_api) -> None:
         mock_api.create_items.return_value = {
             "successful": [{"index": 0, "key": "NEW", "version": 1}],
-            "unchanged": [], "failed": [],
+            "unchanged": [],
+            "failed": [],
         }
         result = svc.create([{"itemType": "journalArticle", "title": "T"}])
         assert result["meta_extra"]["affected_keys"] == ["NEW"]
@@ -83,7 +87,8 @@ class TestCreateSingle:
     def test_returns_successful_item(self, svc, mock_api) -> None:
         mock_api.create_items.return_value = {
             "successful": [{"index": 0, "key": "NEW", "version": 1}],
-            "unchanged": [], "failed": [],
+            "unchanged": [],
+            "failed": [],
         }
         item = svc.create_single({"itemType": "journalArticle"})
         assert item["key"] == "NEW"
@@ -92,7 +97,8 @@ class TestCreateSingle:
 class TestUpdate:
     def test_merges_patch(self, svc, mock_api) -> None:
         mock_api.item.return_value = {
-            "key": "ABC", "version": 5,
+            "key": "ABC",
+            "version": 5,
             "data": {"title": "Old", "itemType": "journalArticle"},
         }
         result = svc.update("ABC", patch={"title": "New"})
