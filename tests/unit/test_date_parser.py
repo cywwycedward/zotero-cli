@@ -9,6 +9,8 @@ from zotero_cli.utils.date_parser import (
     YEAR_MONTH_RE,
     YEAR_RE,
     DateRange,
+    _to_end_bound,
+    _to_start_bound,
     _validate_month,
 )
 
@@ -67,3 +69,50 @@ def test_date_range_dataclass() -> None:
     dr = DateRange("2024-01-01", "2024-12-31")
     assert dr.start == "2024-01-01"
     assert dr.end == "2024-12-31"
+
+
+BOUNDS_CASES = [
+    ("2024", "2024-00-00", "2024-12-31"),
+    ("2024-06", "2024-06-00", "2024-06-30"),
+    ("2024-02", "2024-02-00", "2024-02-29"),  # leap year
+    ("2023-02", "2023-02-00", "2023-02-28"),  # non-leap
+    ("2024-06-15", "2024-06-15", "2024-06-15"),
+    ("2024-12-31", "2024-12-31", "2024-12-31"),
+]
+
+
+@pytest.mark.parametrize("s,exp_start,exp_end", BOUNDS_CASES)
+def test_bounds_start(
+    s: str, exp_start: str, exp_end: str
+) -> None:
+    assert _to_start_bound(s) == exp_start
+
+
+@pytest.mark.parametrize("s,exp_start,exp_end", BOUNDS_CASES)
+def test_bounds_end(
+    s: str, exp_start: str, exp_end: str
+) -> None:
+    assert _to_end_bound(s) == exp_end
+
+
+INVALID_INPUTS = [
+    "June 24",
+    "2024/06",
+    "24-06",
+    "2024-13",
+    "2024-1",
+    "2024-02-30",
+    "2023-02-29",
+]
+
+
+@pytest.mark.parametrize("s", INVALID_INPUTS)
+def test_start_bound_invalid_input_raises(s: str) -> None:
+    with pytest.raises(InvalidDateFormatError):
+        _to_start_bound(s)
+
+
+@pytest.mark.parametrize("s", INVALID_INPUTS)
+def test_end_bound_invalid_input_raises(s: str) -> None:
+    with pytest.raises(InvalidDateFormatError):
+        _to_end_bound(s)
