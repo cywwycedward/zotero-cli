@@ -3,8 +3,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import cast
 
-from zotero_cli.utils.audit_log import AuditEntry, write_entry
+from zotero_cli.utils.audit_log import AuditEntry, _mask_args, write_entry
 
 # ── Step 1: Basic JSONL append writer ──────────────────────────────────────
 
@@ -87,3 +88,31 @@ def test_failure_includes_error_fields(tmp_path: Path) -> None:
     assert data["result"] == "failure"
     assert data["error_code"] == "E001"
     assert data["error_message"] == "Something went wrong"
+
+
+# ── Step 2: Sensitive-field masking ─────────────────────────────────────────
+
+
+def test_api_key_field_masked() -> None:
+    args = {"api_key": "abcd1234efgh5678", "collection": "ABC123"}
+    masked = cast(dict[str, object], _mask_args(args))
+    assert masked["api_key"] == "abcd****"
+    assert masked["collection"] == "ABC123"
+
+
+def test_password_redacted() -> None:
+    args = {"password": "secret123"}
+    masked = cast(dict[str, object], _mask_args(args))
+    assert masked["password"] == "[REDACTED]"
+
+
+def test_nested_password_redacted() -> None:
+    args = {"webdav": {"password": "secret123"}}
+    masked = cast(dict[str, object], _mask_args(args))
+    assert cast(dict[str, object], masked["webdav"])["password"] == "[REDACTED]"
+
+
+def test_short_api_key_fully_masked() -> None:
+    args = {"api_key": "abc"}
+    masked = cast(dict[str, object], _mask_args(args))
+    assert masked["api_key"] == "****"

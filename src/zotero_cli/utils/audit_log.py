@@ -9,6 +9,9 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+_API_KEY_NAMES: frozenset[str] = frozenset({"api_key", "apiKey", "apikey", "api-key"})
+_REDACT_NAMES: frozenset[str] = frozenset({"password", "passwd", "secret"})
+
 
 @dataclass
 class AuditEntry:
@@ -51,9 +54,24 @@ def write_entry(*, log_path: Path, entry: AuditEntry) -> None:
 def _mask_args(obj: object) -> object:
     """Recursively mask / redact sensitive values inside *obj*.
 
-    Currently a pass-through; full masking logic added in Step 2.
+    - Keys matching ``_API_KEY_NAMES``: show first 4 chars, replace rest with ``****``.
+    - Keys matching ``_REDACT_NAMES``: replace value with ``[REDACTED]``.
+    - Recursively process nested dicts and lists.
     """
+    if isinstance(obj, dict):
+        return {k: _mask_value(k, v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_mask_args(item) for item in obj]
     return obj
+
+
+def _mask_value(key: str, value: object) -> object:
+    """Mask or redact *value* depending on *key*, then recurse."""
+    if key in _API_KEY_NAMES and isinstance(value, str):
+        return value[:4] + "****" if len(value) >= 4 else "****"
+    if key in _REDACT_NAMES:
+        return "[REDACTED]"
+    return _mask_args(value)
 
 
 def _maybe_rotate(log_path: Path, entry_timestamp: str) -> None:
