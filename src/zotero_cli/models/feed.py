@@ -1,7 +1,7 @@
 """Feed models for RSS query results (design §11.2)."""
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 class FeedSummary(BaseModel):
@@ -17,6 +17,12 @@ class FeedSummary(BaseModel):
     refresh_interval: int = Field(default=0, alias="refreshInterval")
     total_count: int = 0
     unread_count: int = 0
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def key(self) -> str:
+        """Used by --quiet output."""
+        return str(self.feed_id)
 
 
 class FeedItemCreator(BaseModel):
@@ -45,6 +51,7 @@ class FeedItem(BaseModel):
     translated_time: str | None = None
     creators: list[FeedItemCreator] = Field(default_factory=list)
 
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def key(self) -> str:
         """Used by --quiet output."""
