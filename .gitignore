@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+
+# Caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Project artifacts (DEVELOPMENT.md §10.5)
+*.pdf
+*.sqlite
+*.sqlite-journal
+audit.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
