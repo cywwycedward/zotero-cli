@@ -80,3 +80,34 @@ def _to_end_bound(s: str) -> str:
         f"Unrecognized date format: '{s}'",
         hint="Expected formats: YYYY, YYYY-MM, or YYYY-MM-DD",
     )
+
+
+def date_range_to_sql_bounds(arg: str) -> DateRange:
+    """Convert a user-facing date spec to SQL-compatible start/end bounds.
+
+    Parameters
+    ----------
+    arg:
+        A single date (``2024``, ``2024-06``, ``2024-06-15``) or a range
+        using ``..`` separator (``2024-01..2024-06``).
+
+    Returns
+    -------
+    DateRange
+        A dataclass with ``start`` and ``end`` strings suitable for SQL
+        comparisons (``BETWEEN`` or ``>=`` / ``<=``).
+    """
+    arg = arg.strip()
+    if ".." in arg:
+        if arg.count("..") > 1:
+            raise InvalidDateFormatError(
+                f"Multiple '..' operators in date range: '{arg}'",
+                hint="Use at most one '..' to specify a date range",
+            )
+        left, right = arg.split("..", maxsplit=1)
+        left = left.strip()
+        right = right.strip()
+        start = _to_start_bound(left) if left else "0000-00-00"
+        end = _to_end_bound(right) if right else "9999-12-31"
+        return DateRange(start=start, end=end)
+    return DateRange(start=_to_start_bound(arg), end=_to_end_bound(arg))

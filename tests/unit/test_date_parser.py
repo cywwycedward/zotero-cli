@@ -12,6 +12,7 @@ from zotero_cli.utils.date_parser import (
     _to_end_bound,
     _to_start_bound,
     _validate_month,
+    date_range_to_sql_bounds,
 )
 
 YEAR_MATCHES = ["2024", "1900", "9999"]
@@ -116,3 +117,30 @@ def test_start_bound_invalid_input_raises(s: str) -> None:
 def test_end_bound_invalid_input_raises(s: str) -> None:
     with pytest.raises(InvalidDateFormatError):
         _to_end_bound(s)
+
+
+RANGE_CASES = [
+    ("2024", DateRange("2024-00-00", "2024-12-31")),
+    ("2024-06-15", DateRange("2024-06-15", "2024-06-15")),
+    ("2024-01..2024-06", DateRange("2024-01-00", "2024-06-30")),
+    ("2024-06-15..", DateRange("2024-06-15", "9999-12-31")),
+    ("..2024-06-15", DateRange("0000-00-00", "2024-06-15")),
+    ("..", DateRange("0000-00-00", "9999-12-31")),
+]
+
+
+@pytest.mark.parametrize("arg,expected", RANGE_CASES)
+def test_date_range_to_sql_bounds(
+    arg: str, expected: DateRange
+) -> None:
+    assert date_range_to_sql_bounds(arg) == expected
+
+
+def test_whitespace_stripped() -> None:
+    result = date_range_to_sql_bounds("  2024  ")
+    assert result == DateRange("2024-00-00", "2024-12-31")
+
+
+def test_range_with_spaces_around_dotdot() -> None:
+    result = date_range_to_sql_bounds("2024-01 .. 2024-06")
+    assert result == DateRange("2024-01-00", "2024-06-30")
