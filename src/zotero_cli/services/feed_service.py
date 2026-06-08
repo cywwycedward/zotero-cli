@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from zotero_cli.adapters.sqlite_reader import SQLiteReader
+from zotero_cli.models.errors import FeedNotFoundError
 from zotero_cli.models.feed import FeedItem, FeedSummary
 from zotero_cli.utils.date_parser import date_range_to_sql_bounds
 
@@ -24,6 +25,11 @@ class FeedService:
         include_undated: bool = False,
         limit: int = 100,
     ) -> list[FeedItem]:
+        if not self._reader.feed_exists(feed_id):
+            raise FeedNotFoundError(
+                f"Feed {feed_id} not found",
+                hint="Use 'feeds list' to see available feeds.",
+            )
         date_start = "0000-00-00"
         date_end = "9999-12-31"
         if date_filter:

@@ -7,6 +7,7 @@ import pytest
 
 from zotero_cli.adapters.sqlite_reader import SQLiteReader
 from zotero_cli.models.config import SQLiteConfig
+from zotero_cli.models.errors import FeedNotFoundError
 from zotero_cli.services.feed_service import FeedService
 
 FIXTURE = Path(__file__).parent.parent / "fixtures" / "zotero_test.sqlite"
@@ -67,3 +68,9 @@ class TestFeedItems:
         items = svc.list_items(10, include_undated=True)
         i1005 = next(it for it in items if it.item_id == 1005)
         assert i1005.date_sql == "" or i1005.date_sql is None
+
+
+class TestFeedNotFoundIntegration:
+    def test_list_items_unknown_feed_raises(self, svc: FeedService) -> None:
+        with pytest.raises(FeedNotFoundError):
+            svc.list_items(99999)

@@ -1,7 +1,13 @@
 """Unit tests for feed commands — focuses on --quiet, error paths, field filter."""
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
+import pytest
+
+from zotero_cli.models.errors import FeedNotFoundError
 from zotero_cli.models.feed import FeedItem, FeedSummary
+from zotero_cli.services.feed_service import FeedService
 
 
 class TestFeedModelKeys:
@@ -21,3 +27,14 @@ class TestFeedModelKeys:
         d = item.model_dump()
         assert "key" in d
         assert d["key"] == "1001"
+
+
+class TestFeedNotFound:
+    """F3: feeds items <unknown-id> must raise FEED_NOT_FOUND."""
+
+    def test_list_items_unknown_feed_raises(self) -> None:
+        mock_reader = MagicMock()
+        mock_reader.feed_exists.return_value = False
+        svc = FeedService(mock_reader)
+        with pytest.raises(FeedNotFoundError):
+            svc.list_items(99999)

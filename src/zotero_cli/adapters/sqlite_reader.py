@@ -84,6 +84,12 @@ class SQLiteReader:
         cur = self._conn.execute(sql)
         return [dict(r) for r in cur.fetchall()]
 
+    def feed_exists(self, feed_id: int) -> bool:
+        cur = self._conn.execute(
+            "SELECT 1 FROM feeds WHERE libraryID = ?", (feed_id,)
+        )
+        return cur.fetchone() is not None
+
     def query_items(
         self,
         feed_id: int,
