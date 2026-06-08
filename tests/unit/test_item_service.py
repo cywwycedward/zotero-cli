@@ -118,18 +118,20 @@ class TestDelete:
 
 class TestFlattenItem:
     def test_nested_pyzotero_response_is_flattened(self, svc, mock_api) -> None:
-        mock_api.items_top.return_value = [{
-            "key": "ABC",
-            "version": 5,
-            "data": {
+        mock_api.items_top.return_value = [
+            {
                 "key": "ABC",
-                "title": "Nested Paper",
-                "itemType": "journalArticle",
-                "creators": [{"firstName": "A", "lastName": "B"}],
-                "date": "2026",
-                "tags": [{"tag": "test"}],
-            },
-        }]
+                "version": 5,
+                "data": {
+                    "key": "ABC",
+                    "title": "Nested Paper",
+                    "itemType": "journalArticle",
+                    "creators": [{"firstName": "A", "lastName": "B"}],
+                    "date": "2026",
+                    "tags": [{"tag": "test"}],
+                },
+            }
+        ]
         mock_api.count_items.return_value = 1
         mock_api.library_id = "123"
         mock_api.last_modified_version.return_value = 1
@@ -153,10 +155,12 @@ class TestFlattenItem:
         assert item["title"] == "Flat"
 
     def test_search_also_flattens(self, svc, mock_api) -> None:
-        mock_api.search_items.return_value = [{
-            "key": "S1",
-            "data": {"key": "S1", "title": "Search Result"},
-        }]
+        mock_api.search_items.return_value = [
+            {
+                "key": "S1",
+                "data": {"key": "S1", "title": "Search Result"},
+            }
+        ]
         mock_api.library_id = "123"
         mock_api.last_modified_version.return_value = 1
 

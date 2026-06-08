@@ -198,8 +198,13 @@ class TestSummary:
         data = {
             "backend": "zfs",
             "successful": [
-                {"key": "ATT1", "file": "paper.pdf", "attachment_key": "ATT1",
-                 "parent_item_key": "P1", "size_bytes": 1024},
+                {
+                    "key": "ATT1",
+                    "file": "paper.pdf",
+                    "attachment_key": "ATT1",
+                    "parent_item_key": "P1",
+                    "size_bytes": 1024,
+                },
             ],
             "unchanged": [],
             "failed": [],

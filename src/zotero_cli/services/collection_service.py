@@ -18,6 +18,10 @@ class CollectionService:
     def __init__(self, api: ZoteroAPI) -> None:
         self._api = api
 
+    @classmethod
+    def from_profile(cls, profile: Any) -> "CollectionService":
+        return cls(ZoteroAPI(profile))
+
     def list(self) -> CollectionTreeServiceResult:
         raw = self._api.collections()
         by_key: dict[str, dict[str, Any]] = {c["key"]: c for c in raw}

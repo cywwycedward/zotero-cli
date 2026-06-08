@@ -15,7 +15,6 @@ from typing import Annotated, Any
 
 import typer
 
-from zotero_cli.adapters.zotero_api import ZoteroAPI
 from zotero_cli.commands._runner import GlobalOptions, run_command
 from zotero_cli.models.errors import CLIError, MutuallyExclusiveArgsError
 from zotero_cli.services.config_service import load_config
@@ -154,8 +153,7 @@ def list_items(
     field_filter = _field_filter(ctx, all_fields)
 
     def work() -> tuple[Any, dict[str, Any] | None]:
-        api = ZoteroAPI(profile)
-        svc = ItemService(api)
+        svc = ItemService.from_profile(profile)
         result = svc.list(limit=limit, collection=collection, tag=tag)
         return result["data"], dict(result["meta_extra"])
 
@@ -177,8 +175,7 @@ def search_items(
     field_filter = _field_filter(ctx, all_fields)
 
     def work() -> tuple[Any, dict[str, Any] | None]:
-        api = ZoteroAPI(profile)
-        svc = ItemService(api)
+        svc = ItemService.from_profile(profile)
         result = svc.search(query, limit=limit)
         return result["data"], dict(result["meta_extra"])
 
@@ -199,8 +196,7 @@ def show_item(
     field_filter = _field_filter(ctx, all_fields)
 
     def work() -> tuple[Any, dict[str, Any] | None]:
-        api = ZoteroAPI(profile)
-        svc = ItemService(api)
+        svc = ItemService.from_profile(profile)
         result = svc.show(key)
         return result["data"], None
 
@@ -225,9 +221,7 @@ def create_item(
     collection: Annotated[
         str | None, typer.Option("--collection", help="Add to collection")
     ] = None,
-    attach: Annotated[
-        Path | None, typer.Option("--attach", help="Attach a PDF file")
-    ] = None,
+    attach: Annotated[Path | None, typer.Option("--attach", help="Attach a PDF file")] = None,
     attach_title: Annotated[
         str | None, typer.Option("--attach-title", help="Attachment title")
     ] = None,
@@ -252,8 +246,12 @@ def create_item(
         payload["tags"] = [{"tag": t.strip()} for t in tags.split(",")]
 
     def action() -> tuple[Any, Any]:
-        api = ZoteroAPI(profile)
-        svc = ItemService(api)
+        if dry_run:
+            preview: dict[str, Any] = {"dry_run": True, "would_create": [payload]}
+            if attach is not None:
+                preview["would_upload"] = [str(attach)]
+            return preview, {"dry_run": True}
+        svc = ItemService.from_profile(profile)
         result = svc.create([payload])
         # Upload attachment if --attach was provided
         if attach is not None:
@@ -266,13 +264,12 @@ def create_item(
             parent_key = affected[0]
             att_svc = AttachmentService(profile)
             att_result = att_svc.attach(
-                parent_key, attach, title=attach_title,
+                parent_key,
+                attach,
+                title=attach_title,
             )
-            # Combine parent create + attachment results
             att_keys = att_result["meta_extra"].get("affected_keys", [])
-            combined_data = result["data"]
-            combined_data["successful"].extend(att_result["data"].get("successful", []))
-            return combined_data, {"affected_keys": affected + att_keys}
+            return att_result["data"], {"affected_keys": affected + att_keys}
         return result["data"], result["meta_extra"]
 
     _invoke_write(
@@ -301,9 +298,7 @@ def update_item(
     json_patch: Annotated[
         str | None, typer.Option("--json-patch", help="JSON patch to merge")
     ] = None,
-    attach: Annotated[
-        Path | None, typer.Option("--attach", help="Attach a PDF file")
-    ] = None,
+    attach: Annotated[Path | None, typer.Option("--attach", help="Attach a PDF file")] = None,
     attach_title: Annotated[
         str | None, typer.Option("--attach-title", help="Attachment title")
     ] = None,
@@ -328,19 +323,28 @@ def update_item(
         patch.update(_json.loads(json_patch))
 
     def action() -> tuple[Any, Any]:
-        api = ZoteroAPI(profile)
-        svc = ItemService(api)
+        if dry_run:
+            preview: dict[str, Any] = {"dry_run": True, "would_update": {"key": key, **patch}}
+            if attach is not None:
+                preview["would_upload"] = [str(attach)]
+            return preview, {"dry_run": True}
+        svc = ItemService.from_profile(profile)
         if patch:
             result = svc.update(key, patch=patch)
             item_data, item_meta = result["data"], result["meta_extra"]
         else:
-            item_data = {"successful": [{"index": 0, "key": key, "version": 0}],
-                         "unchanged": [], "failed": []}
+            item_data = {
+                "successful": [{"index": 0, "key": key, "version": 0}],
+                "unchanged": [],
+                "failed": [],
+            }
             item_meta = {"affected_keys": [key]}
         if attach is not None:
             att_svc = AttachmentService(profile)
             att_result = att_svc.attach(key, attach, title=attach_title)
-            return att_result["data"], att_result["meta_extra"]
+            att_keys = att_result["meta_extra"].get("affected_keys", [])
+            item_keys = item_meta.get("affected_keys", [])
+            return att_result["data"], {"affected_keys": item_keys + att_keys}
         return item_data, item_meta
 
     _invoke_write(
@@ -365,8 +369,9 @@ def delete_item(
     profile = _get_profile(ctx)
 
     def action() -> tuple[Any, Any]:
-        api = ZoteroAPI(profile)
-        svc = ItemService(api)
+        if dry_run:
+            return {"dry_run": True, "would_delete": list(keys)}, {"dry_run": True}
+        svc = ItemService.from_profile(profile)
         result = svc.delete(list(keys))
         return result["data"], result["meta_extra"]
 
@@ -386,18 +391,12 @@ def attach_file(
     ctx: typer.Context,
     key: Annotated[str, typer.Argument(help="Parent item key")],
     file: Annotated[Path, typer.Argument(help="PDF file to attach")],
-    title: Annotated[
-        str | None, typer.Option("--title", help="Attachment title")
-    ] = None,
+    title: Annotated[str | None, typer.Option("--title", help="Attachment title")] = None,
     reuse_key: Annotated[
         str | None, typer.Option("--reuse-key", help="Reuse existing attachment key")
     ] = None,
-    force: Annotated[
-        bool, typer.Option("--force", help="Force reupload (WebDAV only)")
-    ] = False,
-    dry_run: Annotated[
-        bool, typer.Option("--dry-run", help="Preview without uploading")
-    ] = False,
+    force: Annotated[bool, typer.Option("--force", help="Force reupload (WebDAV only)")] = False,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Preview without uploading")] = False,
 ) -> None:
     """Attach a file to an existing item."""
     from zotero_cli.services.attachment_service import AttachmentService
@@ -405,9 +404,21 @@ def attach_file(
     profile = _get_profile(ctx)
 
     def action() -> tuple[Any, Any]:
+        if dry_run:
+            preview: dict[str, Any] = {
+                "dry_run": True,
+                "would_upload": [{"parent_key": key, "file": str(file)}],
+            }
+            if reuse_key:
+                preview["would_upload"][0]["reuse_key"] = reuse_key
+            return preview, {"dry_run": True}
         att_svc = AttachmentService(profile)
         result = att_svc.attach(
-            key, file, reuse_key=reuse_key, force=force, title=title,
+            key,
+            file,
+            reuse_key=reuse_key,
+            force=force,
+            title=title,
         )
         return result["data"], result["meta_extra"]
 
@@ -471,8 +482,7 @@ def export_items(
     start = time.perf_counter()
     try:
         profile = _get_profile(ctx)
-        api = ZoteroAPI(profile)
-        svc = ExportService(api)
+        svc = ExportService.from_profile(profile)
         result = svc.export(export_format, collection=collection, tag=tag)
     except CLIError as err:
         elapsed = int((time.perf_counter() - start) * 1000)

@@ -150,7 +150,7 @@ def _render_summary(data: Any, command: str) -> str:
     if not isinstance(data, dict):
         return ""
 
-    successful = data.get("successful", [])
+    successful = data.get("successful", data.get("uploaded", []))
     failed = data.get("failed", [])
     lines: list[str] = []
 
@@ -159,9 +159,19 @@ def _render_summary(data: Any, command: str) -> str:
     if successful:
         count = len(successful)
         item_word = "item" if count == 1 else "items"
-        keys = ", ".join(s["key"] if isinstance(s, dict) else str(s) for s in successful)
+        keys = ", ".join(
+            str(s.get("key") or s.get("attachment_key") or "") if isinstance(s, dict) else str(s)
+            for s in successful
+        )
         lines.append(f"✓ {verb} {count} {item_word}:")
         lines.append(f"  {keys}")
+        parent_keys = {
+            s["parent_item_key"]
+            for s in successful
+            if isinstance(s, dict) and "parent_item_key" in s
+        }
+        if parent_keys:
+            lines.append(f"  parent: {', '.join(sorted(parent_keys))}")
 
     if failed:
         if successful:

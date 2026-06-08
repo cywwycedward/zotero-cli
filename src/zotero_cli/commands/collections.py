@@ -11,7 +11,6 @@ from typing import Annotated, Any
 
 import typer
 
-from zotero_cli.adapters.zotero_api import ZoteroAPI
 from zotero_cli.commands._runner import GlobalOptions, run_command
 from zotero_cli.models.errors import CLIError
 from zotero_cli.services.collection_service import CollectionService
@@ -116,7 +115,7 @@ def _invoke_write(
 def _get_svc(ctx: typer.Context) -> CollectionService:
     options: GlobalOptions = ctx.obj
     profile = load_config(profile=options.profile, config_path=options.config_path)
-    return CollectionService(ZoteroAPI(profile))
+    return CollectionService.from_profile(profile)
 
 
 @app.command("list")

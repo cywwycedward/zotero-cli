@@ -240,7 +240,9 @@ class ZoteroAPI:
     # -- Attachment methods (design §10.0.2.2) --
 
     def attachment_simple(
-        self, files: list[str], parentid: str | None = None,
+        self,
+        files: list[str],
+        parentid: str | None = None,
     ) -> dict[str, Any]:
         """Upload files via pyzotero.attachment_simple."""
         try:
@@ -249,7 +251,9 @@ class ZoteroAPI:
             raise _map_pyzotero_exception(e) from e
 
     def attachment_both(
-        self, files: list[tuple[str, str]], parentid: str | None = None,
+        self,
+        files: list[tuple[str, str]],
+        parentid: str | None = None,
     ) -> dict[str, Any]:
         """Upload files with custom titles via pyzotero.attachment_both."""
         try:
@@ -258,7 +262,9 @@ class ZoteroAPI:
             raise _map_pyzotero_exception(e) from e
 
     def upload_attachments(
-        self, attachments: list[dict[str, Any]], parentid: str | None = None,
+        self,
+        attachments: list[dict[str, Any]],
+        parentid: str | None = None,
     ) -> dict[str, Any]:
         """Upload/re-upload attachments via pyzotero.upload_attachments."""
         try:
@@ -267,7 +273,9 @@ class ZoteroAPI:
             raise _map_pyzotero_exception(e) from e
 
     def item_template(
-        self, item_type: str, link_mode: str | None = None,
+        self,
+        item_type: str,
+        link_mode: str | None = None,
     ) -> dict[str, Any]:
         """Get an item template from pyzotero."""
         try:

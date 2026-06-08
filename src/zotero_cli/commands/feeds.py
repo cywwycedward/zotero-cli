@@ -1,11 +1,11 @@
 """commands/feeds.py — feed subcommands: list, show, items."""
+
 from __future__ import annotations
 
 from typing import Annotated, Any
 
 import typer
 
-from zotero_cli.adapters.sqlite_reader import SQLiteReader
 from zotero_cli.commands._runner import GlobalOptions, run_command
 from zotero_cli.services.config_service import load_config
 from zotero_cli.services.feed_service import FeedService
@@ -32,8 +32,11 @@ def _invoke(
         return data
 
     run_command(
-        command=command, mode=mode, options=options,
-        work=runner_work, meta_extra=captured_meta,
+        command=command,
+        mode=mode,
+        options=options,
+        work=runner_work,
+        meta_extra=captured_meta,
         field_filter=field_filter,
     )
 
@@ -41,13 +44,13 @@ def _invoke(
 def _get_svc(ctx: typer.Context) -> FeedService:
     options: GlobalOptions = ctx.obj
     profile = load_config(profile=options.profile, config_path=options.config_path)
-    reader = SQLiteReader(profile.sqlite)
-    return FeedService(reader)
+    return FeedService.from_profile(profile)
 
 
 @app.command("list")
 def list_feeds(ctx: typer.Context) -> None:
     """List all RSS feed subscriptions."""
+
     def work() -> tuple[Any, Any]:
         svc = _get_svc(ctx)
         feeds = svc.list_feeds()
@@ -63,12 +66,14 @@ def show_feed(
     feed_id: Annotated[int, typer.Argument(help="Feed libraryID")],
 ) -> None:
     """Show details of a single feed."""
+
     def work() -> tuple[Any, Any]:
         svc = _get_svc(ctx)
         feeds = svc.list_feeds()
         match = next((f for f in feeds if f.feed_id == feed_id), None)
         if match is None:
             from zotero_cli.models.errors import FeedNotFoundError
+
             raise FeedNotFoundError(f"Feed {feed_id} not found")
         return match.model_dump(), None
 
@@ -94,7 +99,7 @@ def feed_items(
     field_filter = None if all_fields else profile.feed_item_fields.list
 
     def work() -> tuple[Any, Any]:
-        svc = FeedService(SQLiteReader(profile.sqlite))
+        svc = FeedService.from_profile(profile)
         items = svc.list_items(
             feed_id,
             date_filter=date_filter,

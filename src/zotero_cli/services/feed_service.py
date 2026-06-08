@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from zotero_cli.adapters.sqlite_reader import SQLiteReader
 from zotero_cli.models.errors import FeedNotFoundError
 from zotero_cli.models.feed import FeedItem, FeedSummary
@@ -13,6 +15,10 @@ class FeedService:
 
     def __init__(self, reader: SQLiteReader) -> None:
         self._reader = reader
+
+    @classmethod
+    def from_profile(cls, profile: Any) -> FeedService:
+        return cls(SQLiteReader(profile.sqlite))
 
     def list_feeds(self) -> list[FeedSummary]:
         rows = self._reader.list_feeds()

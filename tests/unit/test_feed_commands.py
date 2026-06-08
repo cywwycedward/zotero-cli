@@ -139,7 +139,7 @@ class TestFeedsShowCommand:
 
 class TestFeedsItemsCommand:
     @patch("zotero_cli.commands.feeds.FeedService")
-    @patch("zotero_cli.commands.feeds.SQLiteReader")
+    @patch("zotero_cli.services.feed_service.SQLiteReader")
     @patch("zotero_cli.commands.feeds.load_config")
     def test_items_success(
         self,
@@ -154,12 +154,12 @@ class TestFeedsItemsCommand:
         mock_svc.list_items.return_value = [
             FeedItem(feed_id=10, item_id=1001, title="Article"),
         ]
-        mock_svc_cls.return_value = mock_svc
+        mock_svc_cls.from_profile.return_value = mock_svc
         result = runner.invoke(feeds_app, ["items", "10"], obj=_ctx())
         assert result.exit_code == 0
 
     @patch("zotero_cli.commands.feeds.FeedService")
-    @patch("zotero_cli.commands.feeds.SQLiteReader")
+    @patch("zotero_cli.services.feed_service.SQLiteReader")
     @patch("zotero_cli.commands.feeds.load_config")
     def test_items_not_found(
         self,
@@ -172,12 +172,12 @@ class TestFeedsItemsCommand:
         mock_load_config.return_value = mock_profile
         mock_svc = MagicMock()
         mock_svc.list_items.side_effect = FeedNotFoundError("Feed 99 not found")
-        mock_svc_cls.return_value = mock_svc
+        mock_svc_cls.from_profile.return_value = mock_svc
         result = runner.invoke(feeds_app, ["items", "99"], obj=_ctx())
         assert result.exit_code == 1
 
     @patch("zotero_cli.commands.feeds.FeedService")
-    @patch("zotero_cli.commands.feeds.SQLiteReader")
+    @patch("zotero_cli.services.feed_service.SQLiteReader")
     @patch("zotero_cli.commands.feeds.load_config")
     def test_items_all_fields(
         self,
@@ -196,6 +196,6 @@ class TestFeedsItemsCommand:
                 url="https://example.com",
             ),
         ]
-        mock_svc_cls.return_value = mock_svc
+        mock_svc_cls.from_profile.return_value = mock_svc
         result = runner.invoke(feeds_app, ["items", "10", "--all-fields"], obj=_ctx())
         assert result.exit_code == 0

@@ -1,5 +1,7 @@
 """ExportService — exports items in requested format."""
 
+from typing import Any
+
 from zotero_cli.adapters.zotero_api import ZoteroAPI
 from zotero_cli.models.results import ExportServiceResult
 
@@ -9,6 +11,10 @@ class ExportService:
 
     def __init__(self, api: ZoteroAPI) -> None:
         self._api = api
+
+    @classmethod
+    def from_profile(cls, profile: Any) -> "ExportService":
+        return cls(ZoteroAPI(profile))
 
     def export(
         self,

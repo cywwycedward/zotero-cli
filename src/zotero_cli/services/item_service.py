@@ -23,6 +23,10 @@ class ItemService:
     def __init__(self, api: ZoteroAPI) -> None:
         self._api = api
 
+    @classmethod
+    def from_profile(cls, profile: Any) -> "ItemService":
+        return cls(ZoteroAPI(profile))
+
     # -- Read --
 
     def list(

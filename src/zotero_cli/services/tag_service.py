@@ -13,6 +13,10 @@ class TagService:
     def __init__(self, api: ZoteroAPI) -> None:
         self._api = api
 
+    @classmethod
+    def from_profile(cls, profile: Any) -> "TagService":
+        return cls(ZoteroAPI(profile))
+
     def list(self) -> ListServiceResult:
         tags = self._api.tags()
         for t in tags:

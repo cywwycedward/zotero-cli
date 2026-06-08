@@ -569,19 +569,19 @@ git worktree remove ../zotero-cli-webdav
 - [x] `FeedItem` 模型含 `feed_id` 字段（设计 §11.2）
 - [x] 集成测试用 `tests/fixtures/zotero_test.sqlite`（设计 §12.3 五条覆盖各种 date 格式）
 - [x] 性能测试：1000 条 feed items + date 过滤 < 300ms（设计 §11.7）
-- [x] 单元 + 集成测试齐全（398 tests）
-- [x] 自检四项全过（ruff clean, ruff format clean, mypy strict 0 errors, 398 passed）
+- [x] 单元 + 集成测试齐全（525 tests）
+- [x] 自检四项全过（ruff clean, ruff format clean, mypy strict 0 errors, 525 passed）
 
 ### §9.6 阶段 6：Agent 自省 + 收尾
 
-- [ ] `commands/schema.py`：命令树 JSON Schema 自省，`--command <name>` 输出指定子命令 schema
-- [ ] `README.md`：安装、快速开始、典型 agent 调用例子
-- [ ] 设计 §12.5 手动测试清单全部跑过、记录结果
-- [ ] 全模块覆盖率达到设计 §12.4 目标
-- [ ] 审计日志格式与设计 §9.4 一致，10MB 轮转生效
-- [ ] mypy strict 全项目无 error
-- [ ] ruff 全项目 clean
-- [ ] DEVELOPMENT.md 与设计文档已根据实施过程发现的偏离同步更新
+- [x] `commands/schema.py`：命令树 JSON Schema 自省，`--command <name>` 输出指定子命令 schema（含参数提取、dot-notation、强制 JSON envelope）
+- [x] `README.md`：安装、快速开始、典型 agent 调用例子
+- [x] 设计 §12.5 手动测试清单：15/17 已执行，14 PASS、1 PARTIAL-FAIL（ZFS --reuse-key 受 pyzotero 412 限制）、2 SKIP（需 Zotero 桌面客户端）
+- [x] 全模块覆盖率达到设计 §12.4 目标（当前 94%，webdav_client 97%、zotero_api 96%、attachment_service 95%）
+- [x] 审计日志格式与设计 §9.4 一致，10MB 轮转生效
+- [x] mypy strict 全项目无 error
+- [x] ruff 全项目 clean（ruff check + ruff format --check 均通过）
+- [ ] DEVELOPMENT.md 与设计文档已根据实施过程发现的偏离同步更新（见 §12 修订记录）
 
 ---
 
@@ -649,11 +649,31 @@ git diff --cached | grep -iE "api[_-]?key|password|secret|token" \
 
 ---
 
+## §11.5 已知限制
+
+### ZFS 后端 `--reuse-key` 不可用（pyzotero 上游 bug）
+
+**现象**：使用 ZFS 后端执行 `items attach <parent> <file> --reuse-key <key>` 时，Zotero API 返回 HTTP 412 `If-None-Match: * set but file exists`。
+
+**根因**（两层）：
+
+1. **我方代码（已修复）**：`_attach_zfs` 构建 template 时未填入已有 attachment 的 `md5`，导致 pyzotero 在 `_get_auth`（Step 1）中走 `If-None-Match: *`（新建语义）而非 `If-Match: <md5>`（更新语义）。已在 `attachment_service.py:97-103` 修复。
+2. **pyzotero 上游 bug**：`Zupload._register_upload`（Step 3）硬编码 `If-None-Match: *`，即使 Step 1 通过，Step 3 也会 412。已提 issue：https://github.com/urschrei/pyzotero/issues/322
+
+**临时处理**：CLI 代码中增加了前置 guard（`attachment_service.py:59-67`，标记 `TODO`），当检测到 ZFS + `--reuse-key` 时直接报错并提示用户配置 WebDAV。待 pyzotero 修复后移除。
+
+**WebDAV 后端不受影响**：WebDAV `--reuse-key` 完全由本项目自行实现 upload 协议，不经过 pyzotero 的三步上传流程。
+
+---
+
 ## §12. 修订记录
 
 | 日期 | 改动 | 触发原因 |
 |---|---|---|
 | 2026-06-07 | 初稿 | 设计文档定稿、进入实施前确立协作规范 |
+| 2026-06-09 | WebDAV ZIP：设计 §10.1 写 base64 编码内部文件名 + `ZIP_STORED`，实际实现使用原始文件名 + `ZIP_DEFLATED` | Phase 4 spike 验证：参考实现 (zotero-mcp) 使用原始文件名 + DEFLATED，且桌面端能正常打开；base64 假设未经实测，跟从已验证方案 |
+| 2026-06-09 | `items create/update --attach` 响应使用附件契约 (`data.uploaded[]`) 而非 CRUD 契约 (`data.successful[]`)，`meta.affected_keys` 合并父 item 和 attachment key | 代码评审 R2：对齐设计 §8.3 / §8.3.1 附件响应契约 |
+| 2026-06-09 | ZFS `--reuse-key` 增加临时 guard 阻断并提示用户配置 WebDAV；`_attach_zfs` template 补充 `md5` 字段 | §12.5 手动测试发现 pyzotero `_register_upload` 硬编码 `If-None-Match: *`（上游 issue #322） |
 
 
 

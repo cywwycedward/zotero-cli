@@ -13,7 +13,11 @@ from zotero_cli.adapters.webdav_client import WebDAVStorage, upload_attachment_w
 from zotero_cli.adapters.zotero_api import ZoteroAPI, _select_backend
 from zotero_cli.models.attachment import AttachmentServiceResult
 from zotero_cli.models.config import ProfileConfig
-from zotero_cli.models.errors import MutuallyExclusiveArgsError, UnsupportedLibraryTypeError
+from zotero_cli.models.errors import (
+    CLIError,
+    MutuallyExclusiveArgsError,
+    UnsupportedLibraryTypeError,
+)
 
 
 class AttachmentService:
@@ -52,6 +56,16 @@ class AttachmentService:
                 hint="ZFS backend uses md5-based idempotency.",
             )
 
+        # TODO: Remove this guard after pyzotero fixes _register_upload hardcoded
+        # If-None-Match header. See https://github.com/urschrei/pyzotero/issues/322
+        if self._backend == "zfs" and reuse_key:
+            raise CLIError(
+                "--reuse-key is not currently supported with ZFS backend due to a "
+                "pyzotero limitation (Zupload._register_upload hardcodes "
+                "If-None-Match: * header, causing HTTP 412 for existing files)",
+                hint="Add [webdav] to your profile config to use --reuse-key.",
+            )
+
         # Validate reuse_key exists on server before upload
         if reuse_key:
             self._api.item(reuse_key)  # raises ItemNotFoundError if missing
@@ -85,6 +99,8 @@ class AttachmentService:
                 tpl["key"] = reuse_key
                 tpl["filename"] = str(file_path)
                 tpl["title"] = title or file_path.name
+                existing = self._api.item(reuse_key)
+                tpl["md5"] = existing.get("data", {}).get("md5", "")
                 result = self._api.upload_attachments([tpl], parentid=None)
             else:
                 if title:
@@ -171,7 +187,7 @@ class AttachmentService:
         return {
             "data": {
                 "backend": self._backend,
-                "successful": all_successful,
+                "uploaded": all_successful,
                 "unchanged": all_unchanged,
                 "failed": all_failed,
             },
@@ -242,7 +258,7 @@ def _format_zfs_result(
     return {
         "data": {
             "backend": "zfs",
-            "successful": successful,
+            "uploaded": successful,
             "unchanged": unchanged,
             "failed": failed,
         },
@@ -257,7 +273,7 @@ def _format_webdav_result(result: dict[str, Any]) -> Any:
     return {
         "data": {
             "backend": result.get("backend", "webdav"),
-            "successful": successful,
+            "uploaded": successful,
             "unchanged": result.get("unchanged", []),
             "failed": result.get("failed", []),
         },
@@ -273,7 +289,7 @@ def _merge_attach_result(
     affected: list[str],
 ) -> None:
     d: dict[str, Any] = r["data"]  # type: ignore[assignment]
-    all_uploaded.extend(d.get("successful", []))
+    all_uploaded.extend(d.get("uploaded", []))
     all_unchanged.extend(d.get("unchanged", []))
     all_failed.extend(d.get("failed", []))
     affected.extend(r.get("meta_extra", {}).get("affected_keys", []))

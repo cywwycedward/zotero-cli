@@ -34,18 +34,20 @@ class TestItemsList:
     def test_default_kv_list_output(self, mocker, runner, tmp_profile) -> None:
         mock_api = mocker.patch(
             "zotero_cli.adapters.zotero_api.ZoteroAPI.items_top",
-            return_value=[{
-                "key": "ABC",
-                "version": 1,
-                "data": {
+            return_value=[
+                {
                     "key": "ABC",
-                    "title": "Test Paper",
-                    "itemType": "journalArticle",
-                    "creators": [],
-                    "date": "2026",
-                    "tags": [],
-                },
-            }],
+                    "version": 1,
+                    "data": {
+                        "key": "ABC",
+                        "title": "Test Paper",
+                        "itemType": "journalArticle",
+                        "creators": [],
+                        "date": "2026",
+                        "tags": [],
+                    },
+                }
+            ],
         )
         mocker.patch(
             "zotero_cli.adapters.zotero_api.ZoteroAPI.count_items",
@@ -67,11 +69,13 @@ class TestItemsList:
     def test_json_envelope_output(self, mocker, runner, tmp_profile) -> None:
         mocker.patch(
             "zotero_cli.adapters.zotero_api.ZoteroAPI.items_top",
-            return_value=[{
-                "key": "ABC",
-                "version": 1,
-                "data": {"key": "ABC", "title": "Test", "itemType": "journalArticle"},
-            }],
+            return_value=[
+                {
+                    "key": "ABC",
+                    "version": 1,
+                    "data": {"key": "ABC", "title": "Test", "itemType": "journalArticle"},
+                }
+            ],
         )
         mocker.patch(
             "zotero_cli.adapters.zotero_api.ZoteroAPI.count_items",
@@ -207,8 +211,18 @@ class TestItemsCreate:
 
         result = runner.invoke(
             app,
-            ["items", "create", "--type", "journalArticle", "--title", "Test",
-             "--attach", str(pdf), "--attach-title", "Custom Title"],
+            [
+                "items",
+                "create",
+                "--type",
+                "journalArticle",
+                "--title",
+                "Test",
+                "--attach",
+                str(pdf),
+                "--attach-title",
+                "Custom Title",
+            ],
         )
         assert result.exit_code == 0
         assert "Created" in result.stdout
@@ -233,6 +247,42 @@ class TestItemsUpdate:
         result = runner.invoke(app, ["items", "update", "K1", "--title", "New Title"])
         assert result.exit_code == 0
         assert "Updated" in result.stdout
+
+    def test_update_with_attach_includes_parent_key_in_affected(
+        self, mocker, runner, tmp_profile, monkeypatch, tmp_path
+    ) -> None:
+        """update --attach affected_keys must include parent item key + attachment key."""
+        monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
+        pdf = tmp_profile.parent / "test.pdf"
+        pdf.write_text("dummy pdf")
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.item",
+            return_value={"key": "K1", "data": {"title": "Old"}, "version": 1},
+        )
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.update_item",
+            return_value=True,
+        )
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.attachment_simple",
+            return_value={
+                "success": ["ATT1"],
+                "unchanged": [],
+                "failure": [],
+            },
+        )
+        result = runner.invoke(
+            app,
+            ["--json", "items", "update", "K1", "--title", "New", "--attach", str(pdf)],
+        )
+        assert result.exit_code == 0
+        import json
+
+        env = json.loads(result.stdout)
+        assert env["ok"] is True
+        assert "uploaded" in env["data"]
+        assert "K1" in env["meta"]["affected_keys"]
+        assert "ATT1" in env["meta"]["affected_keys"]
 
 
 class TestItemsDelete:
@@ -290,7 +340,12 @@ class TestItemsAttach:
         assert "attach" in result.stdout.lower() or "Usage" in result.stdout
 
     def test_attach_default_output(
-        self, mocker, runner, tmp_profile, monkeypatch, tmp_path,
+        self,
+        mocker,
+        runner,
+        tmp_profile,
+        monkeypatch,
+        tmp_path,
     ) -> None:
         """items attach should show 'Attached' in summary output."""
         monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
@@ -319,21 +374,21 @@ class TestItemsAttach:
         assert result.exit_code == 64 or "force" in result.stderr.lower()
 
     def test_attach_reuse_key_not_found(
-        self, mocker, runner, tmp_profile, monkeypatch, tmp_path,
+        self,
+        mocker,
+        runner,
+        tmp_profile,
+        monkeypatch,
+        tmp_path,
     ) -> None:
-        """--reuse-key with non-existent key should return ITEM_NOT_FOUND."""
+        """--reuse-key with ZFS backend should be rejected (pyzotero limitation)."""
         monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
         pdf = tmp_profile.parent / "test.pdf"
         pdf.write_text("dummy pdf")
-        from zotero_cli.models.errors import ItemNotFoundError
-        mocker.patch(
-            "zotero_cli.adapters.zotero_api.ZoteroAPI.item",
-            side_effect=ItemNotFoundError("Item 'NOPE' not found"),
-        )
 
         result = runner.invoke(app, ["items", "attach", "PARENT", str(pdf), "--reuse-key", "NOPE"])
         assert result.exit_code == 1
-        assert "ITEM_NOT_FOUND" in result.stderr
+        assert "--reuse-key is not currently supported" in result.stderr
 
 
 class TestGroupWebdavRejection:
@@ -344,6 +399,7 @@ class TestGroupWebdavRejection:
         config_dir.mkdir(parents=True, exist_ok=True)
         monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
         from zotero_cli.adapters.config_store import write_toml
+
         write_toml(
             config_dir / "config.toml",
             {

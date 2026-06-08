@@ -1,8 +1,9 @@
 """webdav_client.py — Zotero WebDAV protocol implementation (design §10.1-10.6).
 
-Handles PROPFIND/MKCOL/PUT/DELETE, ZIP construction (base64 filename, ZIP_STORED),
+Handles PROPFIND/MKCOL/PUT/DELETE, ZIP construction (raw filename, ZIP_DEFLATED),
 prop XML generation/parsing, and storage_path normalization.
 """
+
 from __future__ import annotations
 
 import contextlib
@@ -64,7 +65,8 @@ def _parse_prop_xml(raw: bytes) -> dict[str, Any]:
         return {"mtime_ms": mtime, "md5": md5}
     except (ET.ParseError, ValueError, TypeError) as e:
         raise WebdavPropInvalidError(
-            f"Failed to parse .prop XML: {e}", cause=e,
+            f"Failed to parse .prop XML: {e}",
+            cause=e,
         ) from e
 
 
@@ -112,7 +114,8 @@ class WebDAVStorage:
             self._client.upload_fileobj(BytesIO(zip_data), path, overwrite=True)
         except Exception as e:
             raise WebdavConnectionError(
-                f"Failed to upload zip for {key}: {e}", cause=e,
+                f"Failed to upload zip for {key}: {e}",
+                cause=e,
             ) from e
 
     def put_prop(self, key: str, prop_data: bytes) -> None:
@@ -122,7 +125,8 @@ class WebDAVStorage:
             self._client.upload_fileobj(BytesIO(prop_data), path, overwrite=True)
         except Exception as e:
             raise WebdavConnectionError(
-                f"Failed to upload prop for {key}: {e}", cause=e,
+                f"Failed to upload prop for {key}: {e}",
+                cause=e,
             ) from e
 
     def delete_file(self, key: str, suffix: str) -> None:
@@ -135,7 +139,9 @@ class WebDAVStorage:
         """Download the .prop file for key. Returns None if not found."""
         path = self._full_path(f"{key}.prop")
         try:
-            return self._client.read_bytes(path)  # type: ignore[no-any-return]
+            buf = BytesIO()
+            self._client.download_fileobj(path, buf)
+            return buf.getvalue()
         except Exception:
             return None
 
@@ -165,6 +171,7 @@ def upload_attachment_webdav(
     # Step 0: Check file exists
     if not file_path.exists():
         from zotero_cli.models.errors import FileNotFoundCLIError
+
         raise FileNotFoundCLIError(f"File not found: {file_path}")
 
     # Step 1: Compute md5 and mtime
@@ -177,42 +184,55 @@ def upload_attachment_webdav(
         if not force and storage.check_md5(reuse_key, md5_hex):
             return {
                 "uploaded": [],
-                "unchanged": [{
-                    "file": file_path.name,
-                    "attachment_key": reuse_key,
-                    "parent_item_key": parent_key,
-                    "size_bytes": file_path.stat().st_size,
-                    "md5": md5_hex,
-                    "version": None,
-                    "webdav_path": storage._full_path(f"{reuse_key}.zip"),
-                    "mtime_ms": mtime_ms,
-                }],
+                "unchanged": [
+                    {
+                        "file": file_path.name,
+                        "attachment_key": reuse_key,
+                        "parent_item_key": parent_key,
+                        "size_bytes": file_path.stat().st_size,
+                        "md5": md5_hex,
+                        "version": None,
+                        "webdav_path": storage._full_path(f"{reuse_key}.zip"),
+                        "mtime_ms": mtime_ms,
+                    }
+                ],
                 "failed": [],
                 "backend": "webdav",
             }
         attachment_key = reuse_key
     else:
         from zotero_cli.adapters.zotero_api import ZoteroAPI
+
         if isinstance(api, ZoteroAPI):
-            result = api.create_items([{
-                "itemType": "attachment",
-                "linkMode": "imported_file",
-                "title": title or file_path.name,
-                "parentItem": parent_key,
-                "filename": file_path.name,
-                "md5": "",
-                "mtime": 0,
-            }])
+            result = api.create_items(
+                [
+                    {
+                        "itemType": "attachment",
+                        "linkMode": "imported_file",
+                        "title": title or file_path.name,
+                        "parentItem": parent_key,
+                        "filename": file_path.name,
+                        "md5": "",
+                        "mtime": 0,
+                    }
+                ]
+            )
             created = result.get("successful", [])
             if created:
                 attachment_key = created[0]["key"]
             else:
                 return {
-                    "uploaded": [], "unchanged": [],
-                    "failed": [{"file": file_path.name, "attachment_key": None,
-                               "parent_item_key": parent_key,
-                               "code": "API_SERVER_ERROR",
-                               "message": "Failed to create attachment item"}],
+                    "uploaded": [],
+                    "unchanged": [],
+                    "failed": [
+                        {
+                            "file": file_path.name,
+                            "attachment_key": None,
+                            "parent_item_key": parent_key,
+                            "code": "API_SERVER_ERROR",
+                            "message": "Failed to create attachment item",
+                        }
+                    ],
                     "backend": "webdav",
                 }
         else:
@@ -227,11 +247,17 @@ def upload_attachment_webdav(
         storage.ensure_storage_dir()
     except Exception as e:
         return {
-            "uploaded": [], "unchanged": [],
-            "failed": [{"file": file_path.name, "attachment_key": attachment_key,
-                       "parent_item_key": parent_key,
-                       "code": "WEBDAV_CONNECTION_ERROR",
-                       "message": f"Failed to ensure storage dir: {e}"}],
+            "uploaded": [],
+            "unchanged": [],
+            "failed": [
+                {
+                    "file": file_path.name,
+                    "attachment_key": attachment_key,
+                    "parent_item_key": parent_key,
+                    "code": "WEBDAV_CONNECTION_ERROR",
+                    "message": f"Failed to ensure storage dir: {e}",
+                }
+            ],
             "backend": "webdav",
         }
 
@@ -243,11 +269,17 @@ def upload_attachment_webdav(
             with contextlib.suppress(Exception):
                 api.delete_item({"key": attachment_key})
         return {
-            "uploaded": [], "unchanged": [],
-            "failed": [{"file": file_path.name, "attachment_key": attachment_key,
-                       "parent_item_key": parent_key,
-                       "code": "WEBDAV_CONNECTION_ERROR",
-                       "message": f"Failed to upload zip: {e}"}],
+            "uploaded": [],
+            "unchanged": [],
+            "failed": [
+                {
+                    "file": file_path.name,
+                    "attachment_key": attachment_key,
+                    "parent_item_key": parent_key,
+                    "code": "WEBDAV_CONNECTION_ERROR",
+                    "message": f"Failed to upload zip: {e}",
+                }
+            ],
             "backend": "webdav",
         }
 
@@ -261,38 +293,48 @@ def upload_attachment_webdav(
             with contextlib.suppress(Exception):
                 api.delete_item({"key": attachment_key})
         return {
-            "uploaded": [], "unchanged": [],
-            "failed": [{"file": file_path.name, "attachment_key": attachment_key,
-                       "parent_item_key": parent_key,
-                       "code": "WEBDAV_CONNECTION_ERROR",
-                       "message": f"Failed to upload prop: {e}"}],
+            "uploaded": [],
+            "unchanged": [],
+            "failed": [
+                {
+                    "file": file_path.name,
+                    "attachment_key": attachment_key,
+                    "parent_item_key": parent_key,
+                    "code": "WEBDAV_CONNECTION_ERROR",
+                    "message": f"Failed to upload prop: {e}",
+                }
+            ],
             "backend": "webdav",
         }
 
     # Step 5: Update attachment metadata (md5/mtime) via pyzotero
     try:
-        if isinstance(api, type) or not hasattr(api, 'update_item'):
+        if isinstance(api, type) or not hasattr(api, "update_item"):
             pass  # test mode
         else:
-            api.update_item({
-                "key": attachment_key,
-                "version": 0,
-                "data": {"md5": md5_hex, "mtime": mtime_ms},
-            })
+            api.update_item(
+                {
+                    "key": attachment_key,
+                    "version": 0,
+                    "data": {"md5": md5_hex, "mtime": mtime_ms},
+                }
+            )
     except Exception:
         pass  # non-fatal: zip+prop already uploaded
 
     return {
-        "uploaded": [{
-            "file": file_path.name,
-            "attachment_key": attachment_key,
-            "parent_item_key": parent_key,
-            "size_bytes": file_path.stat().st_size,
-            "md5": md5_hex,
-            "version": None,
-            "webdav_path": storage._full_path(f"{attachment_key}.zip"),
-            "mtime_ms": mtime_ms,
-        }],
+        "uploaded": [
+            {
+                "file": file_path.name,
+                "attachment_key": attachment_key,
+                "parent_item_key": parent_key,
+                "size_bytes": file_path.stat().st_size,
+                "md5": md5_hex,
+                "version": None,
+                "webdav_path": storage._full_path(f"{attachment_key}.zip"),
+                "mtime_ms": mtime_ms,
+            }
+        ],
         "unchanged": [],
         "failed": [],
         "backend": "webdav",
