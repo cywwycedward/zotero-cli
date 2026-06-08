@@ -8,6 +8,7 @@ from zotero_cli.models.config import SQLiteConfig
 from zotero_cli.models.errors import SqliteNotFoundError, SqliteSchemaIncompatibleError
 
 REQUIRED_TABLES = {"items", "feedItems", "feeds", "fields", "itemData", "itemDataValues"}
+REQUIRED_FEEDITEMS_COLUMNS = {"guid", "readTime", "translatedTime"}
 FIELD_NAMES = {"title", "date", "url", "abstractNote"}
 
 
@@ -21,7 +22,14 @@ class SQLiteReader:
                 hint="Set [<profile>.sqlite] path in config or set ZOTERO_DATA_DIR.",
             )
         uri = f"file:{config.path}?mode=ro&nolock=1"
-        self._conn = sqlite3.connect(uri, uri=True, timeout=5.0)
+        try:
+            self._conn = sqlite3.connect(uri, uri=True, timeout=5.0)
+        except sqlite3.OperationalError as exc:
+            raise SqliteNotFoundError(
+                f"Cannot open SQLite database: {config.path}",
+                hint="Check the file exists and is readable.",
+                cause=exc,
+            ) from exc
         self._conn.row_factory = sqlite3.Row
         self._field_ids: dict[str, int] = {}
         self._check_schema()
@@ -38,6 +46,15 @@ class SQLiteReader:
             raise SqliteSchemaIncompatibleError(
                 f"Missing required tables: {missing}",
                 hint="This database may not be a Zotero database.",
+            )
+        # Check required feedItems columns
+        cur = self._conn.execute("PRAGMA table_info(feedItems)")
+        fi_cols = {r[1] for r in cur.fetchall()}
+        missing_cols = REQUIRED_FEEDITEMS_COLUMNS - fi_cols
+        if missing_cols:
+            raise SqliteSchemaIncompatibleError(
+                f"feedItems table missing required columns: {missing_cols}",
+                hint="Zotero database may be from an older version without RSS support.",
             )
 
     def _cache_field_ids(self) -> None:
