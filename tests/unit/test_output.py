@@ -131,6 +131,24 @@ class TestTree:
         )
         assert result == expected
 
+    def test_list_of_roots(self) -> None:
+        data = [
+            {"name": "A", "key": "A1", "items_count": 2, "children": []},
+            {
+                "name": "B",
+                "key": "B1",
+                "items_count": 3,
+                "children": [
+                    {"name": "B-child", "key": "BC", "items_count": 1, "children": []},
+                ],
+            },
+        ]
+        env = Envelope.success(data=data, command="collections.list", elapsed_ms=100)
+        result = render(envelope=env, mode=OutputMode.TREE, json_mode=False, quiet=False)
+        assert "A [A1]" in result
+        assert "B [B1]" in result
+        assert "B-child [BC]" in result
+
 
 class TestSummary:
     """SUMMARY output mode tests."""
@@ -340,6 +358,22 @@ class TestQuiet:
         env = Envelope.success(data=data, command="collections.tree", elapsed_ms=100)
         result = render(envelope=env, mode=OutputMode.TREE, json_mode=False, quiet=True)
         assert result == "ROOT\nC1\nC2\n"
+
+    def test_tree_list_of_roots_quiet(self) -> None:
+        data = [
+            {
+                "key": "A1",
+                "name": "A",
+                "items_count": 0,
+                "children": [
+                    {"key": "AC", "name": "AC", "items_count": 0, "children": []},
+                ],
+            },
+            {"key": "B1", "name": "B", "items_count": 0, "children": []},
+        ]
+        env = Envelope.success(data=data, command="collections.list", elapsed_ms=100)
+        result = render(envelope=env, mode=OutputMode.TREE, json_mode=False, quiet=True)
+        assert result == "A1\nAC\nB1\n"
 
     def test_empty_list_quiet_returns_empty(self) -> None:
         env = Envelope.success(data=[], command="items.list", elapsed_ms=100)

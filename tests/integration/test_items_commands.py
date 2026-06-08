@@ -102,3 +102,109 @@ class TestItemsShow:
         assert parsed["ok"] is False
         assert parsed["error"]["code"] == "ITEM_NOT_FOUND"
         assert result.stderr == ""
+
+
+class TestItemsCreate:
+    def test_create_default_output(
+        self, mocker, runner, tmp_profile, monkeypatch, tmp_path
+    ) -> None:
+        monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.create_items",
+            return_value={
+                "successful": [{"index": 0, "key": "NEWKEY", "version": 0}],
+                "unchanged": [],
+                "failed": [],
+            },
+        )
+
+        result = runner.invoke(
+            app, ["items", "create", "--type", "journalArticle", "--title", "Test"]
+        )
+        assert result.exit_code == 0
+        assert "Created" in result.stdout
+
+    def test_create_json_mode(self, mocker, runner, tmp_profile, monkeypatch, tmp_path) -> None:
+        monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.create_items",
+            return_value={
+                "successful": [{"index": 0, "key": "NEWKEY", "version": 0}],
+                "unchanged": [],
+                "failed": [],
+            },
+        )
+
+        result = runner.invoke(
+            app, ["--json", "items", "create", "--type", "journalArticle", "--title", "Test"]
+        )
+        assert result.exit_code == 0
+        parsed = json.loads(result.stdout)
+        assert parsed["ok"] is True
+        assert parsed["meta"]["command"] == "items.create"
+
+
+class TestItemsUpdate:
+    def test_update_default_output(
+        self, mocker, runner, tmp_profile, monkeypatch, tmp_path
+    ) -> None:
+        monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.item",
+            return_value={"key": "K1", "data": {"title": "Old"}, "version": 1},
+        )
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.update_item",
+            return_value=True,
+        )
+
+        result = runner.invoke(app, ["items", "update", "K1", "--title", "New Title"])
+        assert result.exit_code == 0
+        assert "Updated" in result.stdout
+
+
+class TestItemsDelete:
+    def test_delete_default_output(
+        self, mocker, runner, tmp_profile, monkeypatch, tmp_path
+    ) -> None:
+        monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.item",
+            return_value={"key": "K1", "version": 1},
+        )
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.delete_item",
+            return_value=True,
+        )
+
+        result = runner.invoke(app, ["items", "delete", "K1"])
+        assert result.exit_code == 0
+        assert "Deleted" in result.stdout
+
+
+class TestItemsExport:
+    def test_export_bibtex_raw(self, mocker, runner, tmp_profile) -> None:
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.export_items",
+            return_value=b"@article{key, title={Test}}",
+        )
+
+        result = runner.invoke(app, ["items", "export", "--format", "bibtex"])
+        assert result.exit_code == 0
+        assert "@article{key, title={Test}}" in result.stdout
+
+    def test_export_json_mode(self, mocker, runner, tmp_profile) -> None:
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.export_items",
+            return_value=b"@article{key, title={Test}}",
+        )
+
+        result = runner.invoke(app, ["--json", "items", "export", "--format", "bibtex"])
+        assert result.exit_code == 0
+        parsed = json.loads(result.stdout)
+        assert parsed["ok"] is True
+        assert parsed["meta"]["command"] == "items.export"
+
+    def test_export_quiet_rejected(self, mocker, runner, tmp_profile) -> None:
+        result = runner.invoke(app, ["--quiet", "items", "export", "--format", "bibtex"])
+        assert result.exit_code == 64

@@ -1,4 +1,5 @@
 """commands/tags.py — tag subcommands with audit logging for write ops."""
+
 from __future__ import annotations
 
 import os
@@ -47,8 +48,11 @@ def _invoke(
         return data
 
     run_command(
-        command=command, mode=mode, options=options,
-        work=runner_work, meta_extra=captured_meta,
+        command=command,
+        mode=mode,
+        options=options,
+        work=runner_work,
+        meta_extra=captured_meta,
     )
 
 
@@ -69,26 +73,43 @@ def _invoke_write(
             data, meta_extra = action()
             elapsed = (time.perf_counter_ns() - start_ns) // 1_000_000
             captured_meta.update(meta_extra or {})
-            write_entry(log_path=log_path, entry=AuditEntry(
-                timestamp=_now_iso(), profile=options.profile, command=command,
-                args=args_for_audit or {}, result="success",
-                affected_keys=(meta_extra or {}).get("affected_keys", []),
-                elapsed_ms=int(elapsed),
-            ))
+            write_entry(
+                log_path=log_path,
+                entry=AuditEntry(
+                    timestamp=_now_iso(),
+                    profile=options.profile,
+                    command=command,
+                    args=args_for_audit or {},
+                    result="success",
+                    affected_keys=(meta_extra or {}).get("affected_keys", []),
+                    elapsed_ms=int(elapsed),
+                ),
+            )
             return data
         except CLIError as err:
             elapsed = (time.perf_counter_ns() - start_ns) // 1_000_000
-            write_entry(log_path=log_path, entry=AuditEntry(
-                timestamp=_now_iso(), profile=options.profile, command=command,
-                args=args_for_audit or {}, result="failure",
-                affected_keys=[], elapsed_ms=int(elapsed),
-                error_code=err.code, error_message=err.message,
-            ))
+            write_entry(
+                log_path=log_path,
+                entry=AuditEntry(
+                    timestamp=_now_iso(),
+                    profile=options.profile,
+                    command=command,
+                    args=args_for_audit or {},
+                    result="failure",
+                    affected_keys=[],
+                    elapsed_ms=int(elapsed),
+                    error_code=err.code,
+                    error_message=err.message,
+                ),
+            )
             raise
 
     run_command(
-        command=command, mode=OutputMode.SUMMARY, options=options,
-        work=runner_work, meta_extra=captured_meta,
+        command=command,
+        mode=OutputMode.SUMMARY,
+        options=options,
+        work=runner_work,
+        meta_extra=captured_meta,
     )
 
 
@@ -101,10 +122,12 @@ def _get_svc(ctx: typer.Context) -> TagService:
 @app.command("list")
 def list_tags(ctx: typer.Context) -> None:
     """List all tags."""
+
     def work() -> tuple[Any, Any]:
         svc = _get_svc(ctx)
         result = svc.list()
         return result["data"], dict(result["meta_extra"])
+
     _invoke(ctx, "tags.list", OutputMode.KV_LIST, work)
 
 
@@ -115,12 +138,13 @@ def add_tag(
     item_keys: Annotated[list[str], typer.Argument(help="Item keys to tag")],
 ) -> None:
     """Add a tag to items."""
+
     def action() -> tuple[Any, Any]:
         svc = _get_svc(ctx)
         result = svc.add(tag, list(item_keys))
         return result["data"], result["meta_extra"]
-    _invoke_write(ctx, "tags.add", action,
-                  args_for_audit={"tag": tag, "item_keys": item_keys})
+
+    _invoke_write(ctx, "tags.add", action, args_for_audit={"tag": tag, "item_keys": item_keys})
 
 
 @app.command("remove")
@@ -130,12 +154,13 @@ def remove_tag(
     item_keys: Annotated[list[str], typer.Argument(help="Item keys to untag")],
 ) -> None:
     """Remove a tag from items."""
+
     def action() -> tuple[Any, Any]:
         svc = _get_svc(ctx)
         result = svc.remove(tag, list(item_keys))
         return result["data"], result["meta_extra"]
-    _invoke_write(ctx, "tags.remove", action,
-                  args_for_audit={"tag": tag, "item_keys": item_keys})
+
+    _invoke_write(ctx, "tags.remove", action, args_for_audit={"tag": tag, "item_keys": item_keys})
 
 
 @app.command("rename")
@@ -145,12 +170,15 @@ def rename_tag(
     new_tag: Annotated[str, typer.Argument(help="New tag name")],
 ) -> None:
     """Rename a tag across all items."""
+
     def action() -> tuple[Any, Any]:
         svc = _get_svc(ctx)
         result = svc.rename(old_tag, new_tag)
         return result["data"], result["meta_extra"]
-    _invoke_write(ctx, "tags.rename", action,
-                  args_for_audit={"old_tag": old_tag, "new_tag": new_tag})
+
+    _invoke_write(
+        ctx, "tags.rename", action, args_for_audit={"old_tag": old_tag, "new_tag": new_tag}
+    )
 
 
 @app.command("delete")
@@ -159,9 +187,10 @@ def delete_tag(
     tag: Annotated[str, typer.Argument(help="Tag to delete entirely")],
 ) -> None:
     """Delete a tag entirely."""
+
     def action() -> tuple[Any, Any]:
         svc = _get_svc(ctx)
         result = svc.delete(tag)
         return result["data"], result["meta_extra"]
-    _invoke_write(ctx, "tags.delete", action,
-                  args_for_audit={"tag": tag})
+
+    _invoke_write(ctx, "tags.delete", action, args_for_audit={"tag": tag})

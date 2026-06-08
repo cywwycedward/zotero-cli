@@ -112,6 +112,12 @@ def _render_kv_list(data: Any) -> str:
 
 def _render_tree(data: Any) -> str:
     """Render a nested dict with name/key/children as a unicode tree."""
+    if isinstance(data, list):
+        return "".join(_render_tree(node) for node in data)
+
+    if not isinstance(data, dict):
+        return str(data) + "\n"
+
     lines: list[str] = []
 
     def _format_node(node: dict[str, Any]) -> str:
@@ -134,11 +140,8 @@ def _render_tree(data: Any) -> str:
             lines.append(prefix + connector + _format_node(child))
             _build(child, prefix + ("    " if is_last else "│   "))
 
-    if isinstance(data, dict):
-        lines.append(_format_node(data))
-        _build(data, "")
-    else:
-        lines.append(str(data))
+    lines.append(_format_node(data))
+    _build(data, "")
     return "\n".join(lines) + "\n"
 
 
@@ -209,6 +212,13 @@ def _render_quiet(envelope: Envelope) -> str:
         if not affected:
             return ""
         return "\n".join(str(k) for k in affected) + "\n"
+
+    # List data with tree structure: collect keys from all root nodes
+    if isinstance(data, list) and data and isinstance(data[0], dict) and "children" in data[0]:
+        keys: list[str] = []
+        for node in data:
+            keys.extend(_collect_tree_keys(node))
+        return "\n".join(keys) + "\n" if keys else ""
 
     # List data: output each item's key
     if isinstance(data, list):

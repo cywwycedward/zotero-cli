@@ -259,7 +259,6 @@ class ZoteroAPI:
     def delete_collection(self, key: str) -> bool:
         """Delete a collection by key. Returns True on success."""
         try:
-
             # pyzotero needs the collection dict; use collections list to find it
             colls = _pyzotero_parse(self._zot.collections())
             target = next((c for c in colls if c.get("key") == key), None)
@@ -308,12 +307,15 @@ class ZoteroAPI:
             raise _map_pyzotero_exception(e) from e
 
     def export_items(
-        self, export_format: str, *,
-        collection: str | None = None, tag: str | None = None,
+        self,
+        export_format: str,
+        *,
+        collection: str | None = None,
+        tag: str | None = None,
     ) -> bytes:
         """Export items in the specified format. Returns raw bytes."""
         try:
-            kwargs: dict[str, Any] = {"format": export_format, "content": "bib"}
+            kwargs: dict[str, Any] = {"format": export_format}
             if collection:
                 kwargs["collection"] = collection
             if tag:

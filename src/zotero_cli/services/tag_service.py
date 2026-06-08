@@ -1,4 +1,5 @@
 """TagService — tag listing, add/remove on items, rename, delete."""
+
 import builtins
 from typing import Any
 
@@ -26,9 +27,7 @@ class TagService:
         unchanged: list[Any] = []
         for idx, ik in enumerate(item_keys):
             item = self._api.item(ik)
-            existing = [
-                t.get("tag", "") for t in item.get("data", {}).get("tags", [])
-            ]
+            existing = [t.get("tag", "") for t in item.get("data", {}).get("tags", [])]
             if tag not in existing:
                 existing.append(tag)
                 item["data"]["tags"] = [{"tag": t} for t in existing]
@@ -45,9 +44,7 @@ class TagService:
         successful: list[Any] = []
         for idx, ik in enumerate(item_keys):
             item = self._api.item(ik)
-            existing = [
-                t.get("tag", "") for t in item.get("data", {}).get("tags", [])
-            ]
+            existing = [t.get("tag", "") for t in item.get("data", {}).get("tags", [])]
             if tag in existing:
                 existing.remove(tag)
                 item["data"]["tags"] = [{"tag": t} for t in existing]
@@ -80,28 +77,23 @@ class TagService:
                 affected.append({"index": idx, "key": item.get("key", ""), "version": 0})
         return {
             "data": {
-                "successful": affected, "unchanged": [], "failed": [],
+                "successful": affected,
+                "unchanged": [],
+                "failed": [],
             },
             "meta_extra": {"affected_keys": [a["key"] for a in affected]},
         }
 
     def delete(self, tag: str) -> MutationServiceResult:
         """Delete a tag entirely. affected_keys = items that held this tag."""
-        all_tags = self._api.tags()
-        tag_info = next((t for t in all_tags if t.get("tag") == tag), None)
+        all_items = self._api.items(limit=10000)
+        affected_keys = [
+            item.get("key", "")
+            for item in all_items
+            if tag in [t.get("tag", "") for t in item.get("data", {}).get("tags", [])]
+        ]
 
         self._api.delete_tags(tag)
-
-        affected_keys: list[str] = []
-        if tag_info:
-            # Find items with this tag via item listing
-            all_items = self._api.items(limit=10000)
-            for item in all_items:
-                item_tags = [
-                    t.get("tag", "") for t in item.get("data", {}).get("tags", [])
-                ]
-                if tag in item_tags:
-                    affected_keys.append(item.get("key", ""))
 
         return {
             "data": {

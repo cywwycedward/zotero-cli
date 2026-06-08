@@ -3,6 +3,7 @@
 Per DEVELOPMENT.md §5.2: all commands go through run_command for stdout/stderr split.
 Write commands attach audit log entries per design §9.4.
 """
+
 from __future__ import annotations
 
 import os
@@ -53,8 +54,11 @@ def _invoke(
         return data
 
     run_command(
-        command=command, mode=mode, options=options,
-        work=runner_work, meta_extra=captured_meta,
+        command=command,
+        mode=mode,
+        options=options,
+        work=runner_work,
+        meta_extra=captured_meta,
         field_filter=field_filter,
     )
 
@@ -77,26 +81,43 @@ def _invoke_write(
             data, meta_extra = action()
             elapsed = (time.perf_counter_ns() - start_ns) // 1_000_000
             captured_meta.update(meta_extra or {})
-            write_entry(log_path=log_path, entry=AuditEntry(
-                timestamp=_now_iso(), profile=options.profile, command=command,
-                args=args_for_audit or {}, result="success",
-                affected_keys=(meta_extra or {}).get("affected_keys", []),
-                elapsed_ms=int(elapsed),
-            ))
+            write_entry(
+                log_path=log_path,
+                entry=AuditEntry(
+                    timestamp=_now_iso(),
+                    profile=options.profile,
+                    command=command,
+                    args=args_for_audit or {},
+                    result="success",
+                    affected_keys=(meta_extra or {}).get("affected_keys", []),
+                    elapsed_ms=int(elapsed),
+                ),
+            )
             return data
         except CLIError as err:
             elapsed = (time.perf_counter_ns() - start_ns) // 1_000_000
-            write_entry(log_path=log_path, entry=AuditEntry(
-                timestamp=_now_iso(), profile=options.profile, command=command,
-                args=args_for_audit or {}, result="failure",
-                affected_keys=[], elapsed_ms=int(elapsed),
-                error_code=err.code, error_message=err.message,
-            ))
+            write_entry(
+                log_path=log_path,
+                entry=AuditEntry(
+                    timestamp=_now_iso(),
+                    profile=options.profile,
+                    command=command,
+                    args=args_for_audit or {},
+                    result="failure",
+                    affected_keys=[],
+                    elapsed_ms=int(elapsed),
+                    error_code=err.code,
+                    error_message=err.message,
+                ),
+            )
             raise
 
     run_command(
-        command=command, mode=OutputMode.SUMMARY, options=options,
-        work=runner_work, meta_extra=captured_meta,
+        command=command,
+        mode=OutputMode.SUMMARY,
+        options=options,
+        work=runner_work,
+        meta_extra=captured_meta,
     )
 
 
@@ -105,7 +126,8 @@ def _field_filter(ctx: typer.Context, all_fields: bool) -> list[str] | None:
     if all_fields:
         return None
     return load_config(
-        profile=options.profile, config_path=options.config_path,
+        profile=options.profile,
+        config_path=options.config_path,
     ).item_fields.list
 
 
@@ -125,9 +147,7 @@ def list_items(
         str | None, typer.Option("--collection", help="Filter by collection key")
     ] = None,
     tag: Annotated[str | None, typer.Option("--tag", help="Filter by tag")] = None,
-    all_fields: Annotated[
-        bool, typer.Option("--all-fields", help="Show all fields")
-    ] = False,
+    all_fields: Annotated[bool, typer.Option("--all-fields", help="Show all fields")] = False,
 ) -> None:
     """List items in the library."""
     profile = _get_profile(ctx)
@@ -150,9 +170,7 @@ def search_items(
     ctx: typer.Context,
     query: Annotated[str, typer.Argument(help="Search query")],
     limit: Annotated[int, typer.Option("--limit", help="Max items")] = 100,
-    all_fields: Annotated[
-        bool, typer.Option("--all-fields", help="Show all fields")
-    ] = False,
+    all_fields: Annotated[bool, typer.Option("--all-fields", help="Show all fields")] = False,
 ) -> None:
     """Search items by query string."""
     profile = _get_profile(ctx)
@@ -174,9 +192,7 @@ def search_items(
 def show_item(
     ctx: typer.Context,
     key: Annotated[str, typer.Argument(help="Item key")],
-    all_fields: Annotated[
-        bool, typer.Option("--all-fields", help="Show all fields")
-    ] = False,
+    all_fields: Annotated[bool, typer.Option("--all-fields", help="Show all fields")] = False,
 ) -> None:
     """Show a single item by key."""
     profile = _get_profile(ctx)
@@ -209,9 +225,7 @@ def create_item(
     collection: Annotated[
         str | None, typer.Option("--collection", help="Add to collection")
     ] = None,
-    dry_run: Annotated[
-        bool, typer.Option("--dry-run", help="Preview without creating")
-    ] = False,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Preview without creating")] = False,
 ) -> None:
     """Create a new item."""
     profile = _get_profile(ctx)
@@ -236,7 +250,9 @@ def create_item(
         return result["data"], result["meta_extra"]
 
     _invoke_write(
-        ctx, "items.create", action,
+        ctx,
+        "items.create",
+        action,
         args_for_audit={"item_type": item_type, "title": title, "dry_run": dry_run},
     )
 
@@ -259,9 +275,7 @@ def update_item(
     json_patch: Annotated[
         str | None, typer.Option("--json-patch", help="JSON patch to merge")
     ] = None,
-    dry_run: Annotated[
-        bool, typer.Option("--dry-run", help="Preview without updating")
-    ] = False,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Preview without updating")] = False,
 ) -> None:
     """Update an existing item."""
     profile = _get_profile(ctx)
@@ -286,7 +300,9 @@ def update_item(
         return result["data"], result["meta_extra"]
 
     _invoke_write(
-        ctx, "items.update", action,
+        ctx,
+        "items.update",
+        action,
         args_for_audit={"key": key, "dry_run": dry_run},
     )
 
@@ -298,12 +314,8 @@ def update_item(
 def delete_item(
     ctx: typer.Context,
     keys: Annotated[list[str], typer.Argument(help="Item keys to delete")],
-    yes: Annotated[
-        bool, typer.Option("--yes", "-y", help="Skip confirmation")
-    ] = False,
-    dry_run: Annotated[
-        bool, typer.Option("--dry-run", help="Preview without deleting")
-    ] = False,
+    yes: Annotated[bool, typer.Option("--yes", "-y", help="Skip confirmation")] = False,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Preview without deleting")] = False,
 ) -> None:
     """Delete one or more items."""
     profile = _get_profile(ctx)
@@ -315,7 +327,9 @@ def delete_item(
         return result["data"], result["meta_extra"]
 
     _invoke_write(
-        ctx, "items.delete", action,
+        ctx,
+        "items.delete",
+        action,
         args_for_audit={"keys": keys, "dry_run": dry_run},
     )
 
@@ -332,9 +346,7 @@ def export_items(
     collection: Annotated[
         str | None, typer.Option("--collection", help="Filter by collection key")
     ] = None,
-    tag: Annotated[
-        str | None, typer.Option("--tag", help="Filter by tag")
-    ] = None,
+    tag: Annotated[str | None, typer.Option("--tag", help="Filter by tag")] = None,
     output: Annotated[
         Path | None, typer.Option("--output", help="Write to file instead of stdout")
     ] = None,
@@ -354,7 +366,9 @@ def export_items(
                 "--json and --quiet cannot be combined",
                 hint="Use --json for full envelope.",
             ),
-            "items.export", 0, options,
+            "items.export",
+            0,
+            options,
         )
         sys.exit(64)
     if options.quiet:
@@ -363,7 +377,9 @@ def export_items(
                 "--quiet is not supported for export",
                 hint="export writes raw content; --quiet has no key concept.",
             ),
-            "items.export", 0, options,
+            "items.export",
+            0,
+            options,
         )
         sys.exit(64)
 

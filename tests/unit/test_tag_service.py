@@ -49,8 +49,39 @@ class TestRemove:
         assert result["meta_extra"]["affected_keys"] == ["I1"]
 
 
+class TestRename:
+    def test_renames_tag_across_items(self, svc) -> None:
+        svc._api.items.return_value = [
+            {"key": "I1", "data": {"tags": [{"tag": "old"}, {"tag": "x"}]}},
+            {"key": "I2", "data": {"tags": [{"tag": "y"}]}},
+        ]
+        result = svc.rename("old", "new")
+        assert result["meta_extra"]["affected_keys"] == ["I1"]
+        assert len(result["data"]["successful"]) == 1
+
+    def test_rename_deduplicates_when_new_tag_exists(self, svc) -> None:
+        svc._api.items.return_value = [
+            {"key": "I1", "data": {"tags": [{"tag": "old"}, {"tag": "new"}]}},
+        ]
+        result = svc.rename("old", "new")
+        assert result["meta_extra"]["affected_keys"] == ["I1"]
+        call_args = svc._api.update_item.call_args[0][0]
+        tag_names = [t["tag"] for t in call_args["data"]["tags"]]
+        assert tag_names == ["new"]
+
+
 class TestDelete:
     def test_deletes_tag(self, svc) -> None:
+        svc._api.items.return_value = []
         result = svc.delete("nlp")
         svc._api.delete_tags.assert_called_once_with("nlp")
         assert len(result["data"]["successful"]) == 1
+
+    def test_affected_keys_contains_items_with_tag(self, svc) -> None:
+        svc._api.items.return_value = [
+            {"key": "I1", "data": {"tags": [{"tag": "nlp"}]}},
+            {"key": "I2", "data": {"tags": [{"tag": "ai"}]}},
+            {"key": "I3", "data": {"tags": [{"tag": "nlp"}, {"tag": "ml"}]}},
+        ]
+        result = svc.delete("nlp")
+        assert result["meta_extra"]["affected_keys"] == ["I1", "I3"]
