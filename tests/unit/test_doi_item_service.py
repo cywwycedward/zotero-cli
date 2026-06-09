@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -68,7 +67,9 @@ def mock_provider() -> MagicMock:
 
 
 @pytest.fixture
-def svc(mock_api: MagicMock, mock_item_service: MagicMock, mock_provider: MagicMock) -> DoiItemService:
+def svc(
+    mock_api: MagicMock, mock_item_service: MagicMock, mock_provider: MagicMock
+) -> DoiItemService:
     return DoiItemService(api=mock_api, item_service=mock_item_service, provider=mock_provider)
 
 

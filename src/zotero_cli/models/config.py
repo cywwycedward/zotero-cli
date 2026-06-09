@@ -114,7 +114,14 @@ class ProfileConfig(BaseModel):
     @field_validator("crossref_email", mode="before")
     @classmethod
     def _normalize_crossref_email(cls, v: str | None) -> str | None:
-        if v is None or v.strip() == "":
+        if v is None:
+            return None
+        if not isinstance(v, str):
+            raise ConfigInvalidError(
+                f"crossref_email must be a string, got {type(v).__name__}",
+                hint="Set a valid email for CrossRef polite pool, or remove the field.",
+            )
+        if v.strip() == "":
             return None
         v = v.strip()
         if "@" not in v:

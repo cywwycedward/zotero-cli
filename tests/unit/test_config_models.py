@@ -226,3 +226,12 @@ class TestCrossrefEmail:
                 library_type="user",
                 crossref_email="invalid",
             )
+
+    def test_non_string_rejected(self) -> None:
+        with pytest.raises(ConfigInvalidError, match="must be a string"):
+            ProfileConfig(
+                api_key="k",
+                library_id="1",
+                library_type="user",
+                crossref_email=123,  # type: ignore[arg-type]
+            )

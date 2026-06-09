@@ -31,6 +31,14 @@ class TestNormalizeDoi:
                 "http://dx.doi.org/10.1038/s41586-020-2649-2",
                 "10.1038/s41586-020-2649-2",
             ),
+            (
+                "https://doi.org/10.1000/a%23b",
+                "10.1000/a#b",
+            ),
+            (
+                "https://doi.org/10.1000/a%3Fb",
+                "10.1000/a?b",
+            ),
         ],
     )
     def test_normalizes_various_formats(self, raw: str, expected: str) -> None:

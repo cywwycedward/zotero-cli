@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 _DOI_PATTERN = re.compile(r"^10\.\d{4,9}/\S+$")
 _TRAILING_PUNCT = ".,:;)]"
@@ -22,7 +22,7 @@ def normalize_doi(raw: str | None) -> str | None:
     elif lower.startswith("http://") or lower.startswith("https://"):
         parsed = urlparse(value)
         if parsed.hostname in ("doi.org", "dx.doi.org"):
-            value = parsed.path.lstrip("/")
+            value = unquote(parsed.path.lstrip("/"))
 
     while value and value[-1] in _TRAILING_PUNCT:
         value = value[:-1]

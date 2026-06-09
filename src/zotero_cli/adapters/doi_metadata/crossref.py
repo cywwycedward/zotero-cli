@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from typing import Any, cast
+from urllib.parse import quote
 
 import httpx
 
@@ -69,7 +70,7 @@ class CrossrefProvider:
         return ua
 
     def fetch(self, doi: str) -> dict[str, Any]:
-        url = f"{_CROSSREF_BASE}/{doi}"
+        url = f"{_CROSSREF_BASE}/{quote(doi, safe='/')}"
         params: dict[str, str] = {}
         if self._email:
             params["mailto"] = self._email
@@ -119,7 +120,18 @@ class CrossrefProvider:
                 context={"doi": doi, "source": "crossref", "status": resp.status_code},
             )
 
-        body: dict[str, Any] = resp.json()
+        try:
+            body = resp.json()
+        except Exception as e:
+            raise ApiServerError(
+                "CrossRef returned non-JSON response",
+                context={"doi": doi, "source": "crossref"},
+            ) from e
+        if not isinstance(body, dict):
+            raise ApiServerError(
+                f"CrossRef returned unexpected JSON type: {type(body).__name__}",
+                context={"doi": doi, "source": "crossref"},
+            )
         message = body.get("message")
         if message is None:
             raise ApiServerError(

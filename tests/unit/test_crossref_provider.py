@@ -50,6 +50,23 @@ class TestFetch:
         assert route.called
 
     @respx.mock
+    @pytest.mark.parametrize(
+        "doi, expected_path",
+        [
+            ("10.1000/a#b", "10.1000/a%23b"),
+            ("10.1000/a?b", "10.1000/a%3Fb"),
+            ("10.1000/a%20b", "10.1000/a%2520b"),
+        ],
+    )
+    def test_reserved_chars_encoded(self, doi: str, expected_path: str) -> None:
+        route = respx.get(
+            url=f"https://api.crossref.org/works/{expected_path}"
+        ).mock(return_value=httpx.Response(200, json=SAMPLE_CROSSREF_MESSAGE))
+        provider = CrossrefProvider()
+        provider.fetch(doi)
+        assert route.called
+
+    @respx.mock
     def test_fetch_with_mailto(self) -> None:
         route = respx.get(
             "https://api.crossref.org/works/10.1038/s41586-020-2649-2",
@@ -132,6 +149,24 @@ class TestFetch:
         )
         provider = CrossrefProvider()
         with pytest.raises(ApiServerError, match="message"):
+            provider.fetch("10.1038/test")
+
+    @respx.mock
+    def test_html_response_raises_server_error(self) -> None:
+        respx.get("https://api.crossref.org/works/10.1038/test").mock(
+            return_value=httpx.Response(200, text="<html>not json</html>")
+        )
+        provider = CrossrefProvider()
+        with pytest.raises(ApiServerError, match="non-JSON"):
+            provider.fetch("10.1038/test")
+
+    @respx.mock
+    def test_json_list_raises_server_error(self) -> None:
+        respx.get("https://api.crossref.org/works/10.1038/test").mock(
+            return_value=httpx.Response(200, json=[1, 2, 3])
+        )
+        provider = CrossrefProvider()
+        with pytest.raises(ApiServerError, match="unexpected JSON type"):
             provider.fetch("10.1038/test")
 
 
