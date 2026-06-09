@@ -469,14 +469,18 @@ class TestDryRunSummary:
 
         data = {"dry_run": True, "would_update": {"key": "ABC", "title": "New"}}
         result = _render_summary(data, "items.update")
-        assert len(result.strip()) > 0
+        assert "dry run" in result.lower()
+        assert "ABC" in result
+        assert "title" in result
 
     def test_delete_dry_run_human_output(self) -> None:
         from zotero_cli.utils.output import _render_summary
 
         data = {"dry_run": True, "would_delete": ["ABC", "DEF"]}
         result = _render_summary(data, "items.delete")
-        assert len(result.strip()) > 0
+        assert "dry run" in result.lower()
+        assert "ABC" in result
+        assert "DEF" in result
 
     def test_attach_dry_run_human_output(self) -> None:
         from zotero_cli.utils.output import _render_summary
@@ -486,7 +490,8 @@ class TestDryRunSummary:
             "would_upload": [{"parent_key": "ABC", "file": "/tmp/test.pdf"}],
         }
         result = _render_summary(data, "items.attach")
-        assert len(result.strip()) > 0
+        assert "dry run" in result.lower()
+        assert "test.pdf" in result
 
 
 class TestDefaultError:
