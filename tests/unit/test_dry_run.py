@@ -141,6 +141,29 @@ class TestDryRun:
         assert env["data"]["dry_run"] is True
         assert env["data"]["would_delete"] == ["ABC123", "DEF456"]
 
+    def test_create_dry_run_includes_collection(
+        self, mocker, runner, tmp_profile, monkeypatch, tmp_path
+    ) -> None:
+        """--collection must appear in the dry-run preview payload."""
+        monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
+        result = runner.invoke(
+            app,
+            [
+                "--json",
+                "items",
+                "create",
+                "--title",
+                "Test",
+                "--collection",
+                "WUHL3RII",
+                "--dry-run",
+            ],
+        )
+        assert result.exit_code == 0
+        env = json.loads(result.stdout)
+        payload = env["data"]["would_create"][0]
+        assert payload["collections"] == ["WUHL3RII"]
+
     def test_attach_dry_run_does_not_upload(
         self, mocker, runner, tmp_profile, monkeypatch, tmp_path
     ) -> None:
