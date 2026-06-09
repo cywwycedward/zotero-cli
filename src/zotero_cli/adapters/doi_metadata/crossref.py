@@ -135,5 +135,88 @@ class CrossrefProvider:
         doi: str,
         item_template: Callable[[str], dict[str, Any]],
     ) -> dict[str, Any]:
-        # Implementation in Task 4
-        raise NotImplementedError
+        crossref_type = raw.get("type", "")
+        zotero_type = _CROSSREF_TYPE_MAP.get(crossref_type, "document")
+        template = item_template(zotero_type)
+        valid_keys = set(template.keys())
+
+        payload: dict[str, Any] = {"itemType": zotero_type}
+
+        titles = raw.get("title")
+        if isinstance(titles, list) and titles:
+            payload["title"] = titles[0]
+
+        payload["DOI"] = raw.get("DOI", doi)
+
+        if "URL" in raw:
+            payload["url"] = raw["URL"]
+
+        for cr_field, z_field in [("volume", "volume"), ("issue", "issue"), ("page", "pages")]:
+            if cr_field in raw and raw[cr_field]:
+                payload[z_field] = raw[cr_field]
+
+        if "publisher" in raw and raw["publisher"]:
+            payload["publisher"] = raw["publisher"]
+
+        for array_field in ["ISSN", "ISBN"]:
+            arr = raw.get(array_field)
+            if isinstance(arr, list) and arr:
+                payload[array_field] = arr[0]
+
+        container = raw.get("container-title")
+        if isinstance(container, list) and container:
+            field_name = _CONTAINER_FIELD.get(zotero_type)
+            if field_name:
+                payload[field_name] = container[0]
+
+        payload["creators"] = self._map_creators(raw)
+
+        date_str = self._extract_date(raw)
+        if date_str:
+            payload["date"] = date_str
+
+        abstract = raw.get("abstract")
+        if abstract:
+            payload["abstractNote"] = _JATS_TAG_RE.sub("", abstract).strip()
+
+        cleaned: dict[str, Any] = {}
+        for k, v in payload.items():
+            if k not in valid_keys and k not in ("itemType",):
+                continue
+            if v == "" or v == [] or v == {}:
+                continue
+            cleaned[k] = v
+        cleaned["itemType"] = zotero_type
+        if "creators" not in cleaned:
+            cleaned["creators"] = []
+        return cleaned
+
+    @staticmethod
+    def _map_creators(raw: dict[str, Any]) -> list[dict[str, Any]]:
+        creators: list[dict[str, Any]] = []
+        for role, creator_type in [("author", "author"), ("editor", "editor")]:
+            for person in raw.get(role, []):
+                if "family" in person:
+                    creators.append({
+                        "creatorType": creator_type,
+                        "firstName": person.get("given", ""),
+                        "lastName": person["family"],
+                    })
+                elif "name" in person:
+                    creators.append({
+                        "creatorType": creator_type,
+                        "name": person["name"],
+                    })
+        return creators
+
+    @staticmethod
+    def _extract_date(raw: dict[str, Any]) -> str:
+        for key in _DATE_KEYS:
+            date_obj = raw.get(key)
+            if date_obj and "date-parts" in date_obj:
+                parts = date_obj["date-parts"]
+                if isinstance(parts, list) and parts:
+                    dp = parts[0]
+                    if isinstance(dp, list) and dp:
+                        return "-".join(str(p) for p in dp)
+        return ""
