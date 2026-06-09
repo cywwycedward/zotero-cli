@@ -145,10 +145,46 @@ def _render_tree(data: Any) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _render_dry_run_preview(data: dict[str, Any], command: str) -> str:
+    """Render dry-run preview for human output."""
+    lines: list[str] = ["[dry run] No changes made.\n"]
+
+    if "would_create" in data:
+        items = data["would_create"]
+        for item in items:
+            title = item.get("title", "(untitled)")
+            item_type = item.get("itemType", "item")
+            lines.append(f"  Would create: {item_type} — {title}")
+
+    if "would_update" in data:
+        update = data["would_update"]
+        key = update.get("key", "?")
+        fields = [k for k in update if k != "key"]
+        lines.append(f"  Would update: {key} — fields: {', '.join(fields)}")
+
+    if "would_delete" in data:
+        keys = data["would_delete"]
+        lines.append(f"  Would delete: {', '.join(str(k) for k in keys)}")
+
+    if "would_upload" in data:
+        uploads = data["would_upload"]
+        for u in uploads:
+            if isinstance(u, dict):
+                lines.append(f"  Would upload: {u.get('file', '?')} → {u.get('parent_key', '?')}")
+            else:
+                lines.append(f"  Would upload: {u}")
+
+    lines.append("")
+    return "\n".join(lines)
+
+
 def _render_summary(data: Any, command: str) -> str:
     """Render a summary of successful and failed operations."""
     if not isinstance(data, dict):
         return ""
+
+    if data.get("dry_run"):
+        return _render_dry_run_preview(data, command)
 
     successful = data.get("successful", data.get("uploaded", []))
     failed = data.get("failed", [])

@@ -451,6 +451,44 @@ class TestQuiet:
         assert result == "COLL2\n"
 
 
+class TestDryRunSummary:
+    def test_create_dry_run_human_output(self) -> None:
+        from zotero_cli.utils.output import _render_summary
+
+        data = {
+            "dry_run": True,
+            "would_create": [{"itemType": "journalArticle", "title": "Test"}],
+        }
+        result = _render_summary(data, "items.create")
+        assert "dry run" in result.lower() or "dry_run" in result.lower()
+        assert "would_create" in result or "create" in result.lower()
+        assert len(result.strip()) > 0
+
+    def test_update_dry_run_human_output(self) -> None:
+        from zotero_cli.utils.output import _render_summary
+
+        data = {"dry_run": True, "would_update": {"key": "ABC", "title": "New"}}
+        result = _render_summary(data, "items.update")
+        assert len(result.strip()) > 0
+
+    def test_delete_dry_run_human_output(self) -> None:
+        from zotero_cli.utils.output import _render_summary
+
+        data = {"dry_run": True, "would_delete": ["ABC", "DEF"]}
+        result = _render_summary(data, "items.delete")
+        assert len(result.strip()) > 0
+
+    def test_attach_dry_run_human_output(self) -> None:
+        from zotero_cli.utils.output import _render_summary
+
+        data = {
+            "dry_run": True,
+            "would_upload": [{"parent_key": "ABC", "file": "/tmp/test.pdf"}],
+        }
+        result = _render_summary(data, "items.attach")
+        assert len(result.strip()) > 0
+
+
 class TestDefaultError:
     """Default error rendering tests."""
 
