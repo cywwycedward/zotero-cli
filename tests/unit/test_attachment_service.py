@@ -201,6 +201,22 @@ class TestAttachZfs:
         assert call_kwargs.get("parentid") is None
         assert result["data"]["backend"] == "zfs"
 
+    def test_attach_zfs_preserves_cli_error_from_api(
+        self, zfs_profile: ProfileConfig, tmp_path: Path
+    ) -> None:
+        """CLIError subclasses from ZoteroAPI must not be double-wrapped
+        into generic CLIError by _attach_zfs's except-Exception handler."""
+        from zotero_cli.models.errors import ApiServerError
+
+        svc, api = _make_service(zfs_profile, backend="zfs")
+        f = tmp_path / "err.pdf"
+        f.write_bytes(b"data")
+
+        api.attachment_simple.side_effect = ApiServerError("server 500")
+
+        with pytest.raises(ApiServerError, match="server 500"):
+            svc.attach("P1", f)
+
     def test_attach_zfs_file_not_found_raises(self, zfs_profile: ProfileConfig) -> None:
         svc, _ = _make_service(zfs_profile, backend="zfs")
         with pytest.raises(FileNotFoundCLIError, match="File not found"):

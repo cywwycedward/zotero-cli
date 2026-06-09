@@ -576,7 +576,7 @@ git worktree remove ../zotero-cli-webdav
 
 - [x] `commands/schema.py`：命令树 JSON Schema 自省，`--command <name>` 输出指定子命令 schema（含参数提取、dot-notation、强制 JSON envelope）
 - [x] `README.md`：安装、快速开始、典型 agent 调用例子
-- [x] 设计 §12.5 手动测试清单：15/17 已执行，14 PASS、1 PARTIAL-FAIL（ZFS --reuse-key 受 pyzotero 412 限制）、2 SKIP（需 Zotero 桌面客户端）
+- [x] 设计 §12.5 手动测试清单：15/17 已执行，14 PASS、1 PASS（ZFS --reuse-key，pyzotero 1.13.1 修复后已解除 guard）、2 SKIP（需 Zotero 桌面客户端）
 - [x] 全模块覆盖率达到设计 §12.4 目标（当前 94%，webdav_client 97%、zotero_api 96%、attachment_service 95%）
 - [x] 审计日志格式与设计 §9.4 一致，10MB 轮转生效
 - [x] mypy strict 全项目无 error
@@ -669,6 +669,7 @@ git diff --cached | grep -iE "api[_-]?key|password|secret|token" \
 | 2026-06-09 | WebDAV ZIP：设计 §10.1 写 base64 编码内部文件名 + `ZIP_STORED`，实际实现使用原始文件名 + `ZIP_DEFLATED` | Phase 4 spike 验证：参考实现 (zotero-mcp) 使用原始文件名 + DEFLATED，且桌面端能正常打开；base64 假设未经实测，跟从已验证方案 |
 | 2026-06-09 | `items create/update --attach` 响应使用附件契约 (`data.uploaded[]`) 而非 CRUD 契约 (`data.successful[]`)，`meta.affected_keys` 合并父 item 和 attachment key | 代码评审 R2：对齐设计 §8.3 / §8.3.1 附件响应契约 |
 | 2026-06-09 | ZFS `--reuse-key` 增加临时 guard 阻断并提示用户配置 WebDAV；`_attach_zfs` template 补充 `md5` 字段 | §12.5 手动测试发现 pyzotero `_register_upload` 硬编码 `If-None-Match: *`（上游 issue #322） |
+| 2026-06-09 | 移除 ZFS `--reuse-key` 临时 guard；更新 §11.5 已知限制状态为"已修复" | pyzotero 1.13.1 修复上游 issue #322，`_register_upload` 接收 `md5` 参数 |
 
 
 
