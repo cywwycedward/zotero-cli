@@ -267,12 +267,13 @@ class TestZoteroAPIReadMethods:
         assert result == [{"key": "A", "data": {"title": "T"}}]
         mock_zot.top.assert_called_once()
 
-    def test_items_top_with_collection_passes_filter(self, mocker) -> None:
+    def test_items_top_with_collection_uses_collection_items_top(self, mocker) -> None:
         api, mock_zot = _make_api(mocker)
-        mock_zot.top.return_value = []
+        mock_zot.collection_items_top.return_value = []
         api.items_top(collection="COL1")
-        _, kwargs = mock_zot.top.call_args
-        assert kwargs["collectionID"] == "COL1"
+        mock_zot.collection_items_top.assert_called_once()
+        assert mock_zot.collection_items_top.call_args[0][0] == "COL1"
+        mock_zot.top.assert_not_called()
 
     def test_items_top_with_tag_passes_filter(self, mocker) -> None:
         api, mock_zot = _make_api(mocker)
@@ -690,3 +691,42 @@ class TestZoteroAPIMethodErrors:
         mock_zot.item_template.side_effect = zerr.PyZoteroError("fail")
         with pytest.raises(CLIError):
             api.item_template("note")
+
+
+# ── Issue #4: collection routing for items_top ────────────────────────────
+
+
+class TestItemsTopCollectionRouting:
+    def test_collection_uses_collection_items_top(self, mocker) -> None:
+        """When collection is given, must call collection_items_top, not top."""
+        mock_zotero = mocker.patch("zotero_cli.adapters.zotero_api.Zotero")
+        from zotero_cli.adapters.zotero_api import ZoteroAPI
+        from zotero_cli.models.config import ProfileConfig
+
+        profile = ProfileConfig(api_key="k", library_id="123", library_type="user")
+        api = ZoteroAPI(profile)
+        instance = mock_zotero.return_value
+        instance.collection_items_top.return_value = [{"key": "A"}]
+
+        result = api.items_top(collection="WUHL3RII")
+
+        instance.collection_items_top.assert_called_once()
+        call_args = instance.collection_items_top.call_args
+        assert call_args[0][0] == "WUHL3RII"
+        instance.top.assert_not_called()
+
+    def test_no_collection_uses_top(self, mocker) -> None:
+        """Without collection, must call top()."""
+        mock_zotero = mocker.patch("zotero_cli.adapters.zotero_api.Zotero")
+        from zotero_cli.adapters.zotero_api import ZoteroAPI
+        from zotero_cli.models.config import ProfileConfig
+
+        profile = ProfileConfig(api_key="k", library_id="123", library_type="user")
+        api = ZoteroAPI(profile)
+        instance = mock_zotero.return_value
+        instance.top.return_value = [{"key": "B"}]
+
+        result = api.items_top()
+
+        instance.top.assert_called_once()
+        instance.collection_items_top.assert_not_called()
