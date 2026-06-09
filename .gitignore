@@ -21,6 +21,10 @@ htmlcov/
 *.sqlite-journal
 audit.log*
 
+# Local planning artifacts
+docs/issues/
+docs/superpowers/
+
 # IDE
 .idea/
 .vscode/
