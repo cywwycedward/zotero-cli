@@ -782,8 +782,8 @@ ZFS 路径几乎全部委托给 pyzotero，本 CLI 只做：参数翻译、返�
 |---|---|---|---|
 | `attachment_simple(files, parentid=None)` | `list[str]` 文件路径 | 创建 attachment item + 上传，文件名作 title | N/A（总是新建） |
 | `attachment_both(files, parentid=None)` | `list[(title, filepath)]` | 同上，custom title | N/A（总是新建） |
-| `upload_attachments(attachments, parentid=None, basedir=None)` | `list[dict]`（来自 `item_template('attachment','imported_file')`，可带 `key` 字段） | 若 dict 无 `key` 则新建；有 `key` 则视为已存在的 attachment item，仅上传文件 | ❌ 与 existing key 不兼容（pyzotero 文档明确） |
-| `Zupload(zinstance, payload, parentid=None, basedir=None).upload()` | 同上 | 完整 4 步：`_create_prelim` → `_get_auth` → `_upload_file` → `_register_upload`；md5 匹配则归入 `unchanged` | ❌ 同 `upload_attachments` |
+| `upload_attachments(attachments, parentid=None, basedir=None)` | `list[dict]`（来自 `item_template('attachment','imported_file')`，可带 `key` 字段） | 若 dict 无 `key` 则新建；有 `key` 则视为已存在的 attachment item，仅上传文件 | ✅ 与 existing key 兼容（pyzotero ≥1.13.1，带 md5 发送 `If-Match`） |
+| `Zupload(zinstance, payload, parentid=None, basedir=None).upload()` | 同上 | 完整 4 步：`_create_prelim` → `_get_auth` → `_upload_file` → `_register_upload`；md5 匹配则归入 `unchanged` | ✅ 同 `upload_attachments`（pyzotero ≥1.13.1） |
 
 **返回值统一形态**：所有上述方法返回 `UploadResult = TypedDict({success, failure, unchanged}, list[dict])`。
 

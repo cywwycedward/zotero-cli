@@ -56,16 +56,6 @@ class AttachmentService:
                 hint="ZFS backend uses md5-based idempotency.",
             )
 
-        # TODO: Remove this guard after pyzotero fixes _register_upload hardcoded
-        # If-None-Match header. See https://github.com/urschrei/pyzotero/issues/322
-        if self._backend == "zfs" and reuse_key:
-            raise CLIError(
-                "--reuse-key is not currently supported with ZFS backend due to a "
-                "pyzotero limitation (Zupload._register_upload hardcodes "
-                "If-None-Match: * header, causing HTTP 412 for existing files)",
-                hint="Add [webdav] to your profile config to use --reuse-key.",
-            )
-
         # Validate reuse_key exists on server before upload
         if reuse_key:
             self._api.item(reuse_key)  # raises ItemNotFoundError if missing

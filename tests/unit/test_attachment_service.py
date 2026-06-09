@@ -154,15 +154,53 @@ class TestAttachZfs:
         svc.attach("P1", f, title="My Data")
         api.attachment_both.assert_called_once_with([("My Data", str(f))], parentid="P1")
 
-    def test_attach_zfs_reuse_key_raises_cli_error(
+    def test_attach_zfs_reuse_key_item_template_and_upload(
         self, zfs_profile: ProfileConfig, tmp_path: Path
     ) -> None:
-        svc, _ = _make_service(zfs_profile, backend="zfs")
+        """ZFS --reuse-key: builds item_template with existing md5 and calls
+        upload_attachments([tpl], parentid=None).  pyzotero 1.13.1 sends
+        If-Match on the md5, fixing issue #322."""
+        svc, api = _make_service(zfs_profile, backend="zfs")
         f = tmp_path / "reuse.pdf"
-        f.write_bytes(b"reused")
+        f.write_bytes(b"reused content")
 
-        with pytest.raises(CLIError, match="--reuse-key is not currently supported"):
-            svc.attach("P1", f, reuse_key="RKEY1")
+        # The template returned by the mock — must be a real dict, not MagicMock
+        tpl = {
+            "itemType": "attachment",
+            "linkMode": "imported_file",
+            "title": "",
+            "filename": "",
+            "contentType": "",
+            "charset": "",
+            "md5": "",
+            "mtime": 0,
+        }
+        api.item_template.return_value = tpl
+        api.item.return_value = {"key": "RKEY1", "data": {"md5": "abc123"}}
+        api.upload_attachments.return_value = {
+            "success": {"0": "RKEY1"},
+            "unchanged": {},
+            "failed": {},
+        }
+
+        result = svc.attach("P1", f, reuse_key="RKEY1")
+
+        # Verify the template was built correctly
+        # item() is called twice: once in attach() for validation (line ~70),
+        # once in _attach_zfs() to read existing md5 (line ~102).
+        assert api.item.call_count == 2
+        api.item.assert_any_call("RKEY1")
+        api.item_template.assert_called_once_with("attachment", "imported_file")
+        # upload_attachments called with tpl containing key + md5, parentid=None
+        api.upload_attachments.assert_called_once()
+        call_args, call_kwargs = api.upload_attachments.call_args
+        sent_tpls = call_args[0]
+        assert len(sent_tpls) == 1
+        assert sent_tpls[0]["key"] == "RKEY1"
+        assert sent_tpls[0]["md5"] == "abc123"
+        assert sent_tpls[0]["filename"] == str(f)
+        assert call_kwargs.get("parentid") is None
+        assert result["data"]["backend"] == "zfs"
 
     def test_attach_zfs_file_not_found_raises(self, zfs_profile: ProfileConfig) -> None:
         svc, _ = _make_service(zfs_profile, backend="zfs")

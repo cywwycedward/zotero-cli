@@ -381,14 +381,22 @@ class TestItemsAttach:
         monkeypatch,
         tmp_path,
     ) -> None:
-        """--reuse-key with ZFS backend should be rejected (pyzotero limitation)."""
+        """--reuse-key with non-existent key returns ITEM_NOT_FOUND.
+        The ZFS guard was removed after pyzotero 1.13.1 fixed issue #322."""
         monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
         pdf = tmp_profile.parent / "test.pdf"
         pdf.write_text("dummy pdf")
 
+        from zotero_cli.models.errors import ItemNotFoundError
+
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.item",
+            side_effect=ItemNotFoundError("Item 'NOPE' not found"),
+        )
+
         result = runner.invoke(app, ["items", "attach", "PARENT", str(pdf), "--reuse-key", "NOPE"])
         assert result.exit_code == 1
-        assert "--reuse-key is not currently supported" in result.stderr
+        assert "ITEM_NOT_FOUND" in result.stderr
 
 
 class TestGroupWebdavRejection:

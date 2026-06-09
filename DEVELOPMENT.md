@@ -651,16 +651,11 @@ git diff --cached | grep -iE "api[_-]?key|password|secret|token" \
 
 ## §11.5 已知限制
 
-### ZFS 后端 `--reuse-key` 不可用（pyzotero 上游 bug）
+### ZFS 后端 `--reuse-key`（已由 pyzotero 1.13.1 修复）
 
-**现象**：使用 ZFS 后端执行 `items attach <parent> <file> --reuse-key <key>` 时，Zotero API 返回 HTTP 412 `If-None-Match: * set but file exists`。
+**背景**：使用 ZFS 后端执行 `items attach <parent> <file> --reuse-key <key>` 曾因 pyzotero 上游 bug（`Zupload._register_upload` 硬编码 `If-None-Match: *` 导致 HTTP 412）而不可用。上游 issue #322 已在 pyzotero 1.13.1 中修复——`_register_upload` 现在接收 `md5` 参数，有 md5 时发送 `If-Match`，否则发送 `If-None-Match: *`。
 
-**根因**（两层）：
-
-1. **我方代码（已修复）**：`_attach_zfs` 构建 template 时未填入已有 attachment 的 `md5`，导致 pyzotero 在 `_get_auth`（Step 1）中走 `If-None-Match: *`（新建语义）而非 `If-Match: <md5>`（更新语义）。已在 `attachment_service.py:97-103` 修复。
-2. **pyzotero 上游 bug**：`Zupload._register_upload`（Step 3）硬编码 `If-None-Match: *`，即使 Step 1 通过，Step 3 也会 412。已提 issue：https://github.com/urschrei/pyzotero/issues/322
-
-**临时处理**：CLI 代码中增加了前置 guard（`attachment_service.py:59-67`，标记 `TODO`），当检测到 ZFS + `--reuse-key` 时直接报错并提示用户配置 WebDAV。待 pyzotero 修复后移除。
+**当前状态**：项目已移除临时 guard（原 `attachment_service.py:59-67` 的 `TODO` 块）。ZFS `--reuse-key` 路径现已生效：读取已有 attachment 的 md5，填入 `item_template`，调用 `upload_attachments([tpl], parentid=None)`，匹配 pyzotero 1.13.1 的 `If-Match` 流程。
 
 **WebDAV 后端不受影响**：WebDAV `--reuse-key` 完全由本项目自行实现 upload 协议，不经过 pyzotero 的三步上传流程。
 
