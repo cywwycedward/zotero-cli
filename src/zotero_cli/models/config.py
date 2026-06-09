@@ -38,6 +38,14 @@ class FeedItemFieldsConfig(BaseModel):
     ]
 
 
+class FeedFieldsConfig(BaseModel):
+    """Fields to show for feeds list (summary view)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    list: builtins.list[str] = ["feed_id", "name", "url", "unread_count", "total_count"]
+
+
 # ── Task 2: WebDAVConfig + storage_path normalize ─────────────────────────
 
 
@@ -100,6 +108,7 @@ class ProfileConfig(BaseModel):
     sqlite: SQLiteConfig = Field(default_factory=SQLiteConfig)
     item_fields: ItemFieldsConfig = Field(default_factory=ItemFieldsConfig)
     feed_item_fields: FeedItemFieldsConfig = Field(default_factory=FeedItemFieldsConfig)
+    feed_fields: FeedFieldsConfig = Field(default_factory=FeedFieldsConfig)
 
 
 # -- Task 5: Config + WebDAV x library_type compat matrix
