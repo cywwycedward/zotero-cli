@@ -12,6 +12,7 @@ from zotero_cli.models.errors import (
     CollectionNotFoundError,
     ConfigInvalidError,
     ConfigNotFoundError,
+    DoiNotFoundError,
     FeedNotFoundError,
     FileNotFoundCLIError,
     InsufficientPermissionsError,
@@ -183,3 +184,15 @@ class TestFromCode:
         err = from_code("DEFINITELY_NOT_REAL", "msg")
         assert type(err) is CLIError
         assert err.code == "DEFINITELY_NOT_REAL"
+
+
+class TestDoiNotFoundError:
+    def test_code_and_category(self) -> None:
+        err = DoiNotFoundError("DOI not found")
+        assert err.code == "DOI_NOT_FOUND"
+        assert err.category == "user_error"
+        assert err.exit_code == 1
+
+    def test_registry_lookup(self) -> None:
+        err = from_code("DOI_NOT_FOUND", "test")
+        assert isinstance(err, DoiNotFoundError)

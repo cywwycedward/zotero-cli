@@ -196,3 +196,33 @@ class TestConfig:
             }
         )  # type: ignore[arg-type]
         assert set(cfg.profiles) == {"default", "work"}
+
+
+class TestCrossrefEmail:
+    def test_default_is_none(self) -> None:
+        p = ProfileConfig(api_key="k", library_id="1", library_type="user")
+        assert p.crossref_email is None
+
+    def test_valid_email(self) -> None:
+        p = ProfileConfig(
+            api_key="k",
+            library_id="1",
+            library_type="user",
+            crossref_email="user@example.com",
+        )
+        assert p.crossref_email == "user@example.com"
+
+    def test_empty_string_normalized_to_none(self) -> None:
+        p = ProfileConfig(
+            api_key="k", library_id="1", library_type="user", crossref_email=""
+        )
+        assert p.crossref_email is None
+
+    def test_missing_at_sign_rejected(self) -> None:
+        with pytest.raises(ConfigInvalidError):
+            ProfileConfig(
+                api_key="k",
+                library_id="1",
+                library_type="user",
+                crossref_email="invalid",
+            )

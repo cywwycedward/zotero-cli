@@ -92,6 +92,10 @@ class UnsupportedLibraryTypeError(CLIError):
     code = "UNSUPPORTED_LIBRARY_TYPE"
 
 
+class DoiNotFoundError(CLIError):
+    code = "DOI_NOT_FOUND"
+
+
 # network_error (2)
 class _NetworkError(CLIError):
     category = "network_error"
@@ -215,6 +219,7 @@ _REGISTRY: dict[str, type[CLIError]] = {
         FileNotFoundCLIError,
         InvalidProfileError,
         UnsupportedLibraryTypeError,
+        DoiNotFoundError,
         ApiTimeoutError,
         ApiRateLimitError,
         ApiServerError,
