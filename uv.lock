@@ -904,7 +904,7 @@ wheels = [
 
 [[package]]
 name = "pyzotero"
-version = "1.13.0"
+version = "1.13.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bibtexparser" },
@@ -912,9 +912,9 @@ dependencies = [
     { name = "httpx" },
     { name = "whenever" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cc/d4/bf9a077d371d894b9280174ad4c412b92a27f32407d823d33810496d2f00/pyzotero-1.13.0.tar.gz", hash = "sha256:ac67208e0f4273f70055bcc5fcdbf1cf3c686d431f25c4343c79d3b43184dd59", size = 554121, upload-time = "2026-05-27T14:08:42.315Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2b/cd/6dec36e4eb2c6133e8cacdb0f6f08edb5a6f07f7843f295cfcc8bcd19c98/pyzotero-1.13.1.tar.gz", hash = "sha256:2ebe3a01690e4b709c16cadfd25a17e15074cb8e3d14275207842dc9192351d5", size = 554937, upload-time = "2026-06-08T20:55:57.199Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/22/20/4e26c3c54e5fbd015c98aee8e12dc073dcc9f994387c9ba1d90924479aba/pyzotero-1.13.0-py3-none-any.whl", hash = "sha256:bedaa9d51f9bb7db5df2b8573fd3ce949978864a41daf15f354bbd519b341f6d", size = 51084, upload-time = "2026-05-27T14:08:40.345Z" },
+    { url = "https://files.pythonhosted.org/packages/e2/9b/bdaf379c08335e692b24026b32cb42bd9991bcee6fb8f67ca8533313c743/pyzotero-1.13.1-py3-none-any.whl", hash = "sha256:9c0a0537ae86b2ebc78d2f1d41cc05ef3eb67b5803b06bc2c071d2770a34bde1", size = 51207, upload-time = "2026-06-08T20:55:55.737Z" },
 ]
 
 [[package]]
@@ -1298,7 +1298,7 @@ requires-dist = [
     { name = "pytest-httpserver", marker = "extra == 'webdav-test'", specifier = ">=1.0" },
     { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3.14" },
     { name = "pyyaml", specifier = ">=6.0" },
-    { name = "pyzotero", specifier = ">=1.5.0" },
+    { name = "pyzotero", specifier = ">=1.13.1" },
     { name = "respx", marker = "extra == 'dev'", specifier = ">=0.21" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
     { name = "tomli-w", specifier = ">=1.0.0" },
