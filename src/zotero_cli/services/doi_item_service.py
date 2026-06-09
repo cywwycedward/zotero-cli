@@ -46,12 +46,11 @@ class DoiItemService:
             item_template=self._api.item_template,
         )
 
-        missing = [
-            f for f in ("itemType", "title", "DOI") if not payload.get(f)
-        ]
+        missing = [f for f in ("itemType", "title", "DOI") if not payload.get(f)]
         if missing:
             raise ApiServerError(
-                f"CrossRef metadata missing required fields: {', '.join(missing)}; cannot create item",
+                f"CrossRef metadata missing required fields: {', '.join(missing)}; "
+                "cannot create item",
                 context={"doi": doi, "source": self._provider.source, "missing": missing},
             )
 

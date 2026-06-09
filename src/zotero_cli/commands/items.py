@@ -281,7 +281,12 @@ def create_item(
         ctx,
         "items.create",
         action,
-        args_for_audit={"item_type": item_type, "title": title, "collection": collection, "dry_run": dry_run},
+        args_for_audit={
+            "item_type": item_type,
+            "title": title,
+            "collection": collection,
+            "dry_run": dry_run,
+        },
     )
 
 

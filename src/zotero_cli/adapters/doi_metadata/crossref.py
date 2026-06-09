@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
@@ -119,14 +119,14 @@ class CrossrefProvider:
                 context={"doi": doi, "source": "crossref", "status": resp.status_code},
             )
 
-        body = resp.json()
+        body: dict[str, Any] = resp.json()
         message = body.get("message")
         if message is None:
             raise ApiServerError(
                 "CrossRef response missing 'message' field",
                 context={"doi": doi, "source": "crossref"},
             )
-        return message
+        return cast("dict[str, Any]", message)
 
     def to_zotero_item(
         self,
@@ -152,10 +152,10 @@ class CrossrefProvider:
             payload["url"] = raw["URL"]
 
         for cr_field, z_field in [("volume", "volume"), ("issue", "issue"), ("page", "pages")]:
-            if cr_field in raw and raw[cr_field]:
+            if raw.get(cr_field):
                 payload[z_field] = raw[cr_field]
 
-        if "publisher" in raw and raw["publisher"]:
+        if raw.get("publisher"):
             payload["publisher"] = raw["publisher"]
 
         for array_field in ["ISSN", "ISBN"]:
@@ -197,16 +197,20 @@ class CrossrefProvider:
         for role, creator_type in [("author", "author"), ("editor", "editor")]:
             for person in raw.get(role, []):
                 if "family" in person:
-                    creators.append({
-                        "creatorType": creator_type,
-                        "firstName": person.get("given", ""),
-                        "lastName": person["family"],
-                    })
+                    creators.append(
+                        {
+                            "creatorType": creator_type,
+                            "firstName": person.get("given", ""),
+                            "lastName": person["family"],
+                        }
+                    )
                 elif "name" in person:
-                    creators.append({
-                        "creatorType": creator_type,
-                        "name": person["name"],
-                    })
+                    creators.append(
+                        {
+                            "creatorType": creator_type,
+                            "name": person["name"],
+                        }
+                    )
         return creators
 
     @staticmethod
