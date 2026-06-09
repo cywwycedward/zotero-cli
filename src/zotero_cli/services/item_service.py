@@ -80,7 +80,7 @@ class ItemService:
 
     def show(self, key: str) -> ShowServiceResult:
         data = self._api.item(key)
-        return {"data": data}
+        return {"data": _flatten_item(data)}
 
     # -- Write --
 

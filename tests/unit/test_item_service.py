@@ -70,6 +70,33 @@ class TestShow:
         with pytest.raises(ItemNotFoundError):
             svc.show("NOPE")
 
+    def test_flattens_nested_data(self, svc, mock_api) -> None:
+        """show() must flatten item['data'] to top level like list/search do."""
+        mock_api.item.return_value = {
+            "key": "ABC123",
+            "version": 42,
+            "data": {
+                "key": "ABC123",
+                "title": "Attention Is All You Need",
+                "itemType": "journalArticle",
+                "creators": [{"firstName": "A", "lastName": "V"}],
+                "date": "2017",
+                "tags": [{"tag": "transformers"}],
+            },
+        }
+        result = svc.show("ABC123")
+        data = result["data"]
+        assert data["title"] == "Attention Is All You Need"
+        assert data["key"] == "ABC123"
+        assert data["itemType"] == "journalArticle"
+        assert data["creators"] == [{"firstName": "A", "lastName": "V"}]
+
+    def test_already_flat_passthrough(self, svc, mock_api) -> None:
+        """If item has no nested 'data', return as-is."""
+        mock_api.item.return_value = {"key": "X", "title": "Flat"}
+        result = svc.show("X")
+        assert result["data"]["title"] == "Flat"
+
 
 class TestCreate:
     def test_single_success(self, svc, mock_api) -> None:
