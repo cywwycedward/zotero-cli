@@ -244,6 +244,8 @@ def create_item(
         payload["url"] = url
     if tags:
         payload["tags"] = [{"tag": t.strip()} for t in tags.split(",")]
+    if collection:
+        payload["collections"] = [collection]
 
     def action() -> tuple[Any, Any]:
         if dry_run:
@@ -276,7 +278,7 @@ def create_item(
         ctx,
         "items.create",
         action,
-        args_for_audit={"item_type": item_type, "title": title, "dry_run": dry_run},
+        args_for_audit={"item_type": item_type, "title": title, "collection": collection, "dry_run": dry_run},
     )
 
 

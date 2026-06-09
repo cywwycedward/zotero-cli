@@ -68,8 +68,14 @@ class TestFeedNotFound:
 
 
 class TestFeedsListCommand:
-    @patch("zotero_cli.commands.feeds._get_svc")
-    def test_list_feeds_success(self, mock_get_svc: MagicMock) -> None:
+    @patch("zotero_cli.commands.feeds.FeedService")
+    @patch("zotero_cli.commands.feeds.load_config")
+    def test_list_feeds_success(
+        self, mock_load_config: MagicMock, mock_svc_cls: MagicMock
+    ) -> None:
+        mock_profile = MagicMock()
+        mock_profile.feed_fields.list = ["feed_id", "name", "url", "unread_count", "total_count"]
+        mock_load_config.return_value = mock_profile
         mock_svc = MagicMock()
         mock_svc.list_feeds.return_value = [
             FeedSummary(
@@ -80,13 +86,19 @@ class TestFeedsListCommand:
                 unread_count=3,
             ),
         ]
-        mock_get_svc.return_value = mock_svc
+        mock_svc_cls.from_profile.return_value = mock_svc
         result = runner.invoke(feeds_app, ["list"], obj=_ctx())
         assert result.exit_code == 0
         assert "Test" in result.stdout
 
-    @patch("zotero_cli.commands.feeds._get_svc")
-    def test_list_feeds_quiet(self, mock_get_svc: MagicMock) -> None:
+    @patch("zotero_cli.commands.feeds.FeedService")
+    @patch("zotero_cli.commands.feeds.load_config")
+    def test_list_feeds_quiet(
+        self, mock_load_config: MagicMock, mock_svc_cls: MagicMock
+    ) -> None:
+        mock_profile = MagicMock()
+        mock_profile.feed_fields.list = ["feed_id", "name", "url", "unread_count", "total_count"]
+        mock_load_config.return_value = mock_profile
         mock_svc = MagicMock()
         mock_svc.list_feeds.return_value = [
             FeedSummary(
@@ -97,18 +109,76 @@ class TestFeedsListCommand:
                 unread_count=3,
             ),
         ]
-        mock_get_svc.return_value = mock_svc
+        mock_svc_cls.from_profile.return_value = mock_svc
         result = runner.invoke(feeds_app, ["list"], obj=_ctx(quiet=True))
         assert result.exit_code == 0
         assert "10" in result.stdout
 
-    @patch("zotero_cli.commands.feeds._get_svc")
-    def test_list_feeds_empty(self, mock_get_svc: MagicMock) -> None:
+    @patch("zotero_cli.commands.feeds.FeedService")
+    @patch("zotero_cli.commands.feeds.load_config")
+    def test_list_feeds_empty(
+        self, mock_load_config: MagicMock, mock_svc_cls: MagicMock
+    ) -> None:
+        mock_profile = MagicMock()
+        mock_profile.feed_fields.list = ["feed_id", "name", "url", "unread_count", "total_count"]
+        mock_load_config.return_value = mock_profile
         mock_svc = MagicMock()
         mock_svc.list_feeds.return_value = []
-        mock_get_svc.return_value = mock_svc
+        mock_svc_cls.from_profile.return_value = mock_svc
         result = runner.invoke(feeds_app, ["list"], obj=_ctx())
         assert result.exit_code == 0
+
+    @patch("zotero_cli.commands.feeds.FeedService")
+    @patch("zotero_cli.commands.feeds.load_config")
+    def test_list_feeds_field_filter_excludes_non_default_fields(
+        self, mock_load_config: MagicMock, mock_svc_cls: MagicMock
+    ) -> None:
+        """Default list should not show fields outside feed_fields.list."""
+        mock_profile = MagicMock()
+        mock_profile.feed_fields.list = ["feed_id", "name", "url", "unread_count", "total_count"]
+        mock_load_config.return_value = mock_profile
+        mock_svc = MagicMock()
+        mock_svc.list_feeds.return_value = [
+            FeedSummary(
+                libraryID=10,
+                name="Test",
+                url="https://example.com",
+                total_count=5,
+                unread_count=3,
+                lastCheckError="network error",
+                refreshInterval=3600,
+            ),
+        ]
+        mock_svc_cls.from_profile.return_value = mock_svc
+        result = runner.invoke(feeds_app, ["list"], obj=_ctx())
+        assert result.exit_code == 0
+        assert "last_check_error" not in result.stdout
+        assert "refresh_interval" not in result.stdout
+
+    @patch("zotero_cli.commands.feeds.FeedService")
+    @patch("zotero_cli.commands.feeds.load_config")
+    def test_list_feeds_all_fields_shows_all(
+        self, mock_load_config: MagicMock, mock_svc_cls: MagicMock
+    ) -> None:
+        """--all-fields bypasses field filter."""
+        mock_profile = MagicMock()
+        mock_load_config.return_value = mock_profile
+        mock_svc = MagicMock()
+        mock_svc.list_feeds.return_value = [
+            FeedSummary(
+                libraryID=10,
+                name="Test",
+                url="https://example.com",
+                total_count=5,
+                unread_count=3,
+                lastCheckError="network error",
+                refreshInterval=3600,
+            ),
+        ]
+        mock_svc_cls.from_profile.return_value = mock_svc
+        result = runner.invoke(feeds_app, ["list", "--all-fields"], obj=_ctx())
+        assert result.exit_code == 0
+        assert "last_check_error" in result.stdout
 
 
 class TestFeedsShowCommand:

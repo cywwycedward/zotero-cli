@@ -133,10 +133,10 @@ class ZoteroAPI:
                 "start": start,
                 "itemType": "-attachment || note",
             }
-            if collection:
-                kwargs["collectionID"] = collection
             if tag:
                 kwargs["tag"] = tag
+            if collection:
+                return self._zot.collection_items_top(collection, **kwargs)  # type: ignore[no-any-return]
             return self._zot.top(**kwargs)  # type: ignore[no-any-return]
         except zerr.PyZoteroError as e:
             raise _map_pyzotero_exception(e) from e

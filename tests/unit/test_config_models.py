@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from zotero_cli.models.config import (
     Config,
+    FeedFieldsConfig,
     FeedItemFieldsConfig,
     ItemFieldsConfig,
     ProfileConfig,
@@ -48,6 +49,20 @@ class TestFeedItemFieldsConfig:
     def test_override_list(self) -> None:
         cfg = FeedItemFieldsConfig(list=["feed_id", "title"])
         assert cfg.list == ["feed_id", "title"]
+
+
+class TestFeedFieldsConfig:
+    def test_default_list(self) -> None:
+        cfg = FeedFieldsConfig()
+        assert cfg.list == ["feed_id", "name", "url", "unread_count", "total_count"]
+
+    def test_override_list(self) -> None:
+        cfg = FeedFieldsConfig(list=["feed_id", "name"])
+        assert cfg.list == ["feed_id", "name"]
+
+    def test_extra_fields_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            FeedFieldsConfig(list=["k"], unknown="x")  # type: ignore[call-arg]
 
 
 # ── Task 2: WebDAVConfig + storage_path normalize ─────────────────────────

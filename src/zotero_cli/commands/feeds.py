@@ -48,16 +48,24 @@ def _get_svc(ctx: typer.Context) -> FeedService:
 
 
 @app.command("list")
-def list_feeds(ctx: typer.Context) -> None:
+def list_feeds(
+    ctx: typer.Context,
+    all_fields: Annotated[
+        bool, typer.Option("--all-fields", help="Show all fields")
+    ] = False,
+) -> None:
     """List all RSS feed subscriptions."""
+    options: GlobalOptions = ctx.obj
+    profile = load_config(profile=options.profile, config_path=options.config_path)
+    field_filter = None if all_fields else profile.feed_fields.list
 
     def work() -> tuple[Any, Any]:
-        svc = _get_svc(ctx)
+        svc = FeedService.from_profile(profile)
         feeds = svc.list_feeds()
         data = [f.model_dump() for f in feeds]
         return data, {"count": len(data)}
 
-    _invoke(ctx, "feeds.list", OutputMode.KV_LIST, work)
+    _invoke(ctx, "feeds.list", OutputMode.KV_LIST, work, field_filter=field_filter)
 
 
 @app.command("show")

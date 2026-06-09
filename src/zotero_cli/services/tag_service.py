@@ -18,9 +18,14 @@ class TagService:
         return cls(ZoteroAPI(profile))
 
     def list(self) -> ListServiceResult:
-        tags = self._api.tags()
-        for t in tags:
-            t["key"] = t.get("tag", "")
+        raw_tags = self._api.tags()
+        tags: builtins.list[dict[str, Any]] = []
+        for t in raw_tags:
+            if isinstance(t, str):
+                tags.append({"tag": t, "key": t})
+            else:
+                t["key"] = t.get("tag", "")
+                tags.append(t)
         return {
             "data": tags,
             "meta_extra": {"count": len(tags), "total": len(tags)},
