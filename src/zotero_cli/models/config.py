@@ -109,6 +109,27 @@ class ProfileConfig(BaseModel):
     item_fields: ItemFieldsConfig = Field(default_factory=ItemFieldsConfig)
     feed_item_fields: FeedItemFieldsConfig = Field(default_factory=FeedItemFieldsConfig)
     feed_fields: FeedFieldsConfig = Field(default_factory=FeedFieldsConfig)
+    crossref_email: str | None = None
+
+    @field_validator("crossref_email", mode="before")
+    @classmethod
+    def _normalize_crossref_email(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        if not isinstance(v, str):
+            raise ConfigInvalidError(
+                f"crossref_email must be a string, got {type(v).__name__}",
+                hint="Set a valid email for CrossRef polite pool, or remove the field.",
+            )
+        if v.strip() == "":
+            return None
+        v = v.strip()
+        if "@" not in v:
+            raise ConfigInvalidError(
+                f"crossref_email must contain '@', got: {v!r}",
+                hint="Set a valid email for CrossRef polite pool, or remove the field.",
+            )
+        return v
 
 
 # -- Task 5: Config + WebDAV x library_type compat matrix

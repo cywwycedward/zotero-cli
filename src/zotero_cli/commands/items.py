@@ -15,9 +15,12 @@ from typing import Annotated, Any
 
 import typer
 
+from zotero_cli.adapters.doi_metadata.crossref import CrossrefProvider
+from zotero_cli.adapters.zotero_api import ZoteroAPI
 from zotero_cli.commands._runner import GlobalOptions, run_command
 from zotero_cli.models.errors import CLIError, MutuallyExclusiveArgsError
 from zotero_cli.services.config_service import load_config
+from zotero_cli.services.doi_item_service import DoiItemService
 from zotero_cli.services.item_service import ItemService
 from zotero_cli.utils.audit_log import AuditEntry, write_entry
 from zotero_cli.utils.output import OutputMode
@@ -278,7 +281,53 @@ def create_item(
         ctx,
         "items.create",
         action,
-        args_for_audit={"item_type": item_type, "title": title, "collection": collection, "dry_run": dry_run},
+        args_for_audit={
+            "item_type": item_type,
+            "title": title,
+            "collection": collection,
+            "dry_run": dry_run,
+        },
+    )
+
+
+# ── add-doi ───────────────────────────────────────────────────────────────
+
+
+@app.command("add-doi")
+def add_doi(
+    ctx: typer.Context,
+    doi: Annotated[str, typer.Argument(help="DOI, doi: prefix, or DOI URL")],
+    collection: Annotated[
+        str | None, typer.Option("--collection", help="Add to collection")
+    ] = None,
+    tags: Annotated[str | None, typer.Option("--tags", help="Comma-separated tags")] = None,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Preview without creating")] = False,
+) -> None:
+    """Create an item by resolving metadata from a DOI via CrossRef."""
+    profile = _get_profile(ctx)
+    tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
+
+    def action() -> tuple[Any, Any]:
+        api = ZoteroAPI(profile)
+        provider = CrossrefProvider(crossref_email=getattr(profile, "crossref_email", None))
+        svc = DoiItemService(
+            api=api,
+            item_service=ItemService(api),
+            provider=provider,
+        )
+        result = svc.add_by_doi(
+            doi,
+            dry_run=dry_run,
+            tags=tag_list,
+            collection=collection,
+        )
+        return result["data"], result.get("meta_extra")
+
+    _invoke_write(
+        ctx,
+        "items.add_doi",
+        action,
+        args_for_audit={"doi": doi, "collection": collection, "dry_run": dry_run},
     )
 
 
