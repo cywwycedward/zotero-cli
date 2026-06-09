@@ -8,7 +8,6 @@ import pytest
 
 from zotero_cli.models.config import ProfileConfig
 from zotero_cli.models.errors import (
-    CLIError,
     FileNotFoundCLIError,
     MutuallyExclusiveArgsError,
     UnsupportedLibraryTypeError,

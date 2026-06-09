@@ -104,6 +104,8 @@ class AttachmentService:
                         parentid=parent_key,
                     )
             return _format_zfs_result(result, file_path.name, parent_key, file_size)
+        except CLIError:
+            raise
         except Exception as e:
             from zotero_cli.adapters.zotero_api import _map_pyzotero_exception
 
