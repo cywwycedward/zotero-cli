@@ -24,6 +24,7 @@ audit.log*
 # Local planning artifacts
 docs/issues/
 docs/superpowers/
+docs/features/
 
 # IDE
 .idea/
