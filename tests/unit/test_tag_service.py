@@ -17,6 +17,15 @@ class TestList:
         assert result["data"][0]["key"] == "nlp"
         assert result["meta_extra"]["total"] == 1
 
+    def test_handles_string_tags_from_pyzotero(self, svc) -> None:
+        """pyzotero 1.13.1 returns tag names as plain strings, not dicts."""
+        svc._api.tags.return_value = ["nlp", "machine-learning", "transformers"]
+        result = svc.list()
+        assert len(result["data"]) == 3
+        assert result["data"][0] == {"tag": "nlp", "key": "nlp"}
+        assert result["data"][1] == {"tag": "machine-learning", "key": "machine-learning"}
+        assert result["meta_extra"]["count"] == 3
+
 
 class TestAdd:
     def test_adds_tag_to_item(self, svc) -> None:
