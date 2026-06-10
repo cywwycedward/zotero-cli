@@ -710,6 +710,7 @@ class TestItemsTopCollectionRouting:
 
         result = api.items_top(collection="WUHL3RII")
 
+        assert result == [{"key": "A"}]
         instance.collection_items_top.assert_called_once()
         call_args = instance.collection_items_top.call_args
         assert call_args[0][0] == "WUHL3RII"
@@ -728,5 +729,6 @@ class TestItemsTopCollectionRouting:
 
         result = api.items_top()
 
+        assert result == [{"key": "B"}]
         instance.top.assert_called_once()
         instance.collection_items_top.assert_not_called()
