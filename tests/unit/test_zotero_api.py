@@ -434,18 +434,49 @@ class TestZoteroAPICollectionMethods:
 
     def test_create_collection_basic(self, mocker) -> None:
         api, mock_zot = _make_api(mocker)
-        mock_zot.create_collection.return_value = {"key": "NEW"}
+        mock_zot.create_collection.return_value = {
+            "success": {"0": "NEW"},
+            "unchanged": {},
+            "failed": {},
+        }
         result = api.create_collection("My Collection")
         assert result == {"key": "NEW"}
         mock_zot.create_collection.assert_called_once_with([{"name": "My Collection"}])
 
     def test_create_collection_with_parent(self, mocker) -> None:
         api, mock_zot = _make_api(mocker)
-        mock_zot.create_collection.return_value = {"key": "CHILD"}
-        api.create_collection("Sub", parent="PARENT1")
+        mock_zot.create_collection.return_value = {
+            "success": {"0": "CHILD"},
+            "unchanged": {},
+            "failed": {},
+        }
+        result = api.create_collection("Sub", parent="PARENT1")
+        assert result == {"key": "CHILD"}
         mock_zot.create_collection.assert_called_once_with(
             [{"name": "Sub", "parentCollection": "PARENT1"}]
         )
+
+    def test_create_collection_returns_normalized_key(self, mocker) -> None:
+        """create_collection must extract key from pyzotero batch result."""
+        api, mock_zot = _make_api(mocker)
+        mock_zot.create_collection.return_value = {
+            "success": {"0": "NEWCOLL"},
+            "unchanged": {},
+            "failed": {},
+        }
+        result = api.create_collection("Test Collection")
+        assert result["key"] == "NEWCOLL"
+
+    def test_create_collection_failed_raises(self, mocker) -> None:
+        """create_collection must raise CLIError when batch result has no success."""
+        api, mock_zot = _make_api(mocker)
+        mock_zot.create_collection.return_value = {
+            "success": {},
+            "unchanged": {},
+            "failed": {"0": {"code": 400, "message": "Invalid"}},
+        }
+        with pytest.raises(CLIError, match="Collection creation failed"):
+            api.create_collection("Bad Coll")
 
     def test_delete_collection_success(self, mocker) -> None:
         api, mock_zot = _make_api(mocker)

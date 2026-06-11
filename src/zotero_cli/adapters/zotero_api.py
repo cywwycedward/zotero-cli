@@ -293,12 +293,19 @@ class ZoteroAPI:
             raise _map_pyzotero_exception(e) from e
 
     def create_collection(self, name: str, parent: str | None = None) -> PyzoteroResponse:
-        """Create a collection. Returns the created collection dict."""
+        """Create a collection. Returns dict with 'key' of the created collection."""
         try:
             payload: list[dict[str, Any]] = [{"name": name}]
             if parent:
                 payload[0]["parentCollection"] = parent
-            return self._zot.create_collection(payload)  # type: ignore[no-any-return]
+            result = self._zot.create_collection(payload)
+            normalized = _normalize_batch_result(result, payload)
+            if normalized["successful"]:
+                return {"key": normalized["successful"][0]["key"]}
+            msg = "Collection creation failed"
+            if normalized["failed"]:
+                msg = f"Collection creation failed: {normalized['failed'][0].get('message', '')}"
+            raise CLIError(msg)
         except zerr.PyZoteroError as e:
             raise _map_pyzotero_exception(e) from e
 
