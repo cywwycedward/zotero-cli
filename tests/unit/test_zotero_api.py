@@ -565,6 +565,43 @@ class TestZoteroAPIExport:
         _, kwargs = mock_zot.items.call_args
         assert kwargs["tag"] == "urgent"
 
+    def test_export_items_bibdatabase_serialized(self, mocker) -> None:
+        """bibtex: pyzotero returns BibDatabase; must serialize to BibTeX text."""
+        from bibtexparser.bibdatabase import BibDatabase
+
+        api, mock_zot = _make_api(mocker)
+        bib_db = BibDatabase()
+        bib_db.entries = [{"ID": "key1", "ENTRYTYPE": "article", "title": "Test Paper"}]
+        mock_zot.items.return_value = bib_db
+        result = api.export_items("bibtex")
+        assert b"key1" in result
+        assert b"Test Paper" in result
+        assert b"BibDatabase" not in result
+
+    def test_export_items_list_of_dict_as_json(self, mocker) -> None:
+        """csljson: pyzotero returns list[dict]; must serialize as JSON."""
+        api, mock_zot = _make_api(mocker)
+        mock_zot.items.return_value = [{"id": "1", "type": "article-journal"}]
+        result = api.export_items("csljson")
+        import json
+        parsed = json.loads(result)
+        assert parsed == [{"id": "1", "type": "article-journal"}]
+
+    def test_export_items_list_of_str_joined(self, mocker) -> None:
+        """Fallback: list[str] items joined with newlines."""
+        api, mock_zot = _make_api(mocker)
+        mock_zot.items.return_value = ["entry one", "entry two"]
+        result = api.export_items("wikipedia")
+        assert result == b"entry one\nentry two"
+
+    def test_export_items_json_decode_error_mapped(self, mocker) -> None:
+        """Non-PyZoteroError (e.g. JSONDecodeError from RIS) must be caught and mapped."""
+        import json as _json
+        api, mock_zot = _make_api(mocker)
+        mock_zot.items.side_effect = _json.JSONDecodeError("bad", "", 0)
+        with pytest.raises(CLIError, match="Export failed"):
+            api.export_items("ris")
+
 
 # ── _pyzotero_parse helper ────────────────────────────────────────────────
 

@@ -98,6 +98,31 @@ def _pyzotero_parse(result: object) -> Any:
     return result
 
 
+def _serialize_export_result(result: object) -> bytes:
+    import json as _json
+
+    if isinstance(result, bytes):
+        return result
+    if isinstance(result, str):
+        return result.encode("utf-8")
+    if hasattr(result, "entries") and not isinstance(result, (dict, list)):
+        try:
+            import bibtexparser
+        except ImportError as e:
+            raise CLIError(
+                "bibtexparser is required for BibTeX export but not installed",
+                cause=e,
+            ) from e
+        return bibtexparser.dumps(result).encode("utf-8")
+    if isinstance(result, dict):
+        return _json.dumps(result, ensure_ascii=False, indent=2).encode("utf-8")
+    if isinstance(result, list):
+        if result and isinstance(result[0], dict):
+            return _json.dumps(result, ensure_ascii=False, indent=2).encode("utf-8")
+        return "\n".join(str(item) for item in result).encode("utf-8")
+    return str(result).encode("utf-8")
+
+
 # ── Task 2: ZoteroAPI ──────────────────────────────────────────────────────
 
 
@@ -374,13 +399,16 @@ class ZoteroAPI:
             if tag:
                 kwargs["tag"] = tag
             result = self._zot.items(**kwargs)
-            if isinstance(result, str):
-                return result.encode("utf-8")
-            if isinstance(result, bytes):
-                return result
-            return str(result).encode("utf-8")
+            return _serialize_export_result(result)
         except zerr.PyZoteroError as e:
             raise _map_pyzotero_exception(e) from e
+        except CLIError:
+            raise
+        except Exception as e:
+            raise CLIError(
+                f"Export failed for format {export_format!r}: {e}",
+                cause=e,
+            ) from e
 
 
 # ── Helper: normalize pyzotero batch result ────────────────────────────────
