@@ -544,13 +544,20 @@ def export_items(
     raw_bytes: bytes = result["data"]
     byte_size = len(raw_bytes)
 
+    if output is not None:
+        output.write_bytes(raw_bytes)
+
     if options.json_mode:
+        data: dict[str, Any] = {
+            "format": export_format,
+            "byte_size": byte_size,
+        }
+        if output is not None:
+            data["output_path"] = str(output)
+        else:
+            data["content"] = raw_bytes.decode("utf-8", errors="replace")
         env = Envelope.success(
-            data={
-                "format": export_format,
-                "content": raw_bytes.decode("utf-8", errors="replace"),
-                "byte_size": byte_size,
-            },
+            data=data,
             command="items.export",
             elapsed_ms=elapsed,
             meta_extra=result.get("meta_extra"),
@@ -559,7 +566,6 @@ def export_items(
         sys.exit(0)
 
     if output is not None:
-        output.write_bytes(raw_bytes)
         sys.stderr.write(f"Exported {byte_size} bytes to {output}\n")
     else:
         sys.stdout.buffer.write(raw_bytes)
