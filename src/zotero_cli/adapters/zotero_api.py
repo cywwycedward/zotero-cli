@@ -107,13 +107,13 @@ def _serialize_export_result(result: object) -> bytes:
         return result.encode("utf-8")
     if hasattr(result, "entries") and not isinstance(result, (dict, list)):
         try:
-            import bibtexparser
+            import bibtexparser  # type: ignore[import-untyped]
         except ImportError as e:
             raise CLIError(
                 "bibtexparser is required for BibTeX export but not installed",
                 cause=e,
             ) from e
-        return bibtexparser.dumps(result).encode("utf-8")
+        return bibtexparser.dumps(result).encode("utf-8")  # type: ignore[no-any-return]
     if isinstance(result, dict):
         return _json.dumps(result, ensure_ascii=False, indent=2).encode("utf-8")
     if isinstance(result, list):

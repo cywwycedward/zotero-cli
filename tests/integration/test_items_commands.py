@@ -331,7 +331,9 @@ class TestItemsExport:
         result = runner.invoke(app, ["--quiet", "items", "export", "--format", "bibtex"])
         assert result.exit_code == 64
 
-    def test_json_output_writes_file_and_envelope(self, mocker, runner, tmp_profile, tmp_path) -> None:
+    def test_json_output_writes_file_and_envelope(
+        self, mocker, runner, tmp_profile, tmp_path
+    ) -> None:
         """--json --output must write the file AND return JSON envelope."""
         mocker.patch(
             "zotero_cli.adapters.zotero_api.ZoteroAPI.export_items",
