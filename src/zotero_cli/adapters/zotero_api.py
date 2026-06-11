@@ -98,6 +98,31 @@ def _pyzotero_parse(result: object) -> Any:
     return result
 
 
+def _serialize_export_result(result: object) -> bytes:
+    import json as _json
+
+    if isinstance(result, bytes):
+        return result
+    if isinstance(result, str):
+        return result.encode("utf-8")
+    if hasattr(result, "entries") and not isinstance(result, (dict, list)):
+        try:
+            import bibtexparser  # type: ignore[import-untyped]
+        except ImportError as e:
+            raise CLIError(
+                "bibtexparser is required for BibTeX export but not installed",
+                cause=e,
+            ) from e
+        return bibtexparser.dumps(result).encode("utf-8")  # type: ignore[no-any-return]
+    if isinstance(result, dict):
+        return _json.dumps(result, ensure_ascii=False, indent=2).encode("utf-8")
+    if isinstance(result, list):
+        if result and isinstance(result[0], dict):
+            return _json.dumps(result, ensure_ascii=False, indent=2).encode("utf-8")
+        return "\n".join(str(item) for item in result).encode("utf-8")
+    return str(result).encode("utf-8")
+
+
 # ── Task 2: ZoteroAPI ──────────────────────────────────────────────────────
 
 
@@ -293,12 +318,19 @@ class ZoteroAPI:
             raise _map_pyzotero_exception(e) from e
 
     def create_collection(self, name: str, parent: str | None = None) -> PyzoteroResponse:
-        """Create a collection. Returns the created collection dict."""
+        """Create a collection. Returns dict with 'key' of the created collection."""
         try:
             payload: list[dict[str, Any]] = [{"name": name}]
             if parent:
                 payload[0]["parentCollection"] = parent
-            return self._zot.create_collection(payload)  # type: ignore[no-any-return]
+            result = self._zot.create_collection(payload)
+            normalized = _normalize_batch_result(result, payload)
+            if normalized["successful"]:
+                return {"key": normalized["successful"][0]["key"]}
+            msg = "Collection creation failed"
+            if normalized["failed"]:
+                msg = f"Collection creation failed: {normalized['failed'][0].get('message', '')}"
+            raise CLIError(msg)
         except zerr.PyZoteroError as e:
             raise _map_pyzotero_exception(e) from e
 
@@ -362,18 +394,22 @@ class ZoteroAPI:
         """Export items in the specified format. Returns raw bytes."""
         try:
             kwargs: dict[str, Any] = {"format": export_format}
-            if collection:
-                kwargs["collection"] = collection
             if tag:
                 kwargs["tag"] = tag
-            result = self._zot.items(**kwargs)
-            if isinstance(result, str):
-                return result.encode("utf-8")
-            if isinstance(result, bytes):
-                return result
-            return str(result).encode("utf-8")
+            if collection:
+                result = self._zot.collection_items(collection, **kwargs)
+            else:
+                result = self._zot.items(**kwargs)
+            return _serialize_export_result(result)
         except zerr.PyZoteroError as e:
             raise _map_pyzotero_exception(e) from e
+        except CLIError:
+            raise
+        except Exception as e:
+            raise CLIError(
+                f"Export failed for format {export_format!r}: {e}",
+                cause=e,
+            ) from e
 
 
 # ── Helper: normalize pyzotero batch result ────────────────────────────────

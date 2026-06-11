@@ -52,6 +52,7 @@ class TestCreate:
         svc._api.create_collection.return_value = {"key": "NEW"}
         result = svc.create("My Coll")
         assert result["meta_extra"]["affected_keys"] == ["NEW"]
+        assert result["data"]["successful"][0]["key"] == "NEW"
 
 
 class TestAddItems:

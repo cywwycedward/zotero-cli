@@ -434,18 +434,49 @@ class TestZoteroAPICollectionMethods:
 
     def test_create_collection_basic(self, mocker) -> None:
         api, mock_zot = _make_api(mocker)
-        mock_zot.create_collection.return_value = {"key": "NEW"}
+        mock_zot.create_collection.return_value = {
+            "success": {"0": "NEW"},
+            "unchanged": {},
+            "failed": {},
+        }
         result = api.create_collection("My Collection")
         assert result == {"key": "NEW"}
         mock_zot.create_collection.assert_called_once_with([{"name": "My Collection"}])
 
     def test_create_collection_with_parent(self, mocker) -> None:
         api, mock_zot = _make_api(mocker)
-        mock_zot.create_collection.return_value = {"key": "CHILD"}
-        api.create_collection("Sub", parent="PARENT1")
+        mock_zot.create_collection.return_value = {
+            "success": {"0": "CHILD"},
+            "unchanged": {},
+            "failed": {},
+        }
+        result = api.create_collection("Sub", parent="PARENT1")
+        assert result == {"key": "CHILD"}
         mock_zot.create_collection.assert_called_once_with(
             [{"name": "Sub", "parentCollection": "PARENT1"}]
         )
+
+    def test_create_collection_returns_normalized_key(self, mocker) -> None:
+        """create_collection must extract key from pyzotero batch result."""
+        api, mock_zot = _make_api(mocker)
+        mock_zot.create_collection.return_value = {
+            "success": {"0": "NEWCOLL"},
+            "unchanged": {},
+            "failed": {},
+        }
+        result = api.create_collection("Test Collection")
+        assert result["key"] == "NEWCOLL"
+
+    def test_create_collection_failed_raises(self, mocker) -> None:
+        """create_collection must raise CLIError when batch result has no success."""
+        api, mock_zot = _make_api(mocker)
+        mock_zot.create_collection.return_value = {
+            "success": {},
+            "unchanged": {},
+            "failed": {"0": {"code": 400, "message": "Invalid"}},
+        }
+        with pytest.raises(CLIError, match="Collection creation failed"):
+            api.create_collection("Bad Coll")
 
     def test_delete_collection_success(self, mocker) -> None:
         api, mock_zot = _make_api(mocker)
@@ -522,10 +553,13 @@ class TestZoteroAPIExport:
 
     def test_export_items_with_collection_filter(self, mocker) -> None:
         api, mock_zot = _make_api(mocker)
-        mock_zot.items.return_value = ""
+        mock_zot.collection_items.return_value = ""
         api.export_items("bibtex", collection="C1")
-        _, kwargs = mock_zot.items.call_args
-        assert kwargs["collection"] == "C1"
+        mock_zot.collection_items.assert_called_once()
+        args, kwargs = mock_zot.collection_items.call_args
+        assert args[0] == "C1"
+        assert kwargs["format"] == "bibtex"
+        mock_zot.items.assert_not_called()
 
     def test_export_items_with_tag_filter(self, mocker) -> None:
         api, mock_zot = _make_api(mocker)
@@ -533,6 +567,45 @@ class TestZoteroAPIExport:
         api.export_items("bibtex", tag="urgent")
         _, kwargs = mock_zot.items.call_args
         assert kwargs["tag"] == "urgent"
+
+    def test_export_items_bibdatabase_serialized(self, mocker) -> None:
+        """bibtex: pyzotero returns BibDatabase; must serialize to BibTeX text."""
+        from bibtexparser.bibdatabase import BibDatabase
+
+        api, mock_zot = _make_api(mocker)
+        bib_db = BibDatabase()
+        bib_db.entries = [{"ID": "key1", "ENTRYTYPE": "article", "title": "Test Paper"}]
+        mock_zot.items.return_value = bib_db
+        result = api.export_items("bibtex")
+        assert b"key1" in result
+        assert b"Test Paper" in result
+        assert b"BibDatabase" not in result
+
+    def test_export_items_list_of_dict_as_json(self, mocker) -> None:
+        """csljson: pyzotero returns list[dict]; must serialize as JSON."""
+        api, mock_zot = _make_api(mocker)
+        mock_zot.items.return_value = [{"id": "1", "type": "article-journal"}]
+        result = api.export_items("csljson")
+        import json
+
+        parsed = json.loads(result)
+        assert parsed == [{"id": "1", "type": "article-journal"}]
+
+    def test_export_items_list_of_str_joined(self, mocker) -> None:
+        """Fallback: list[str] items joined with newlines."""
+        api, mock_zot = _make_api(mocker)
+        mock_zot.items.return_value = ["entry one", "entry two"]
+        result = api.export_items("wikipedia")
+        assert result == b"entry one\nentry two"
+
+    def test_export_items_json_decode_error_mapped(self, mocker) -> None:
+        """Non-PyZoteroError (e.g. JSONDecodeError from RIS) must be caught and mapped."""
+        import json as _json
+
+        api, mock_zot = _make_api(mocker)
+        mock_zot.items.side_effect = _json.JSONDecodeError("bad", "", 0)
+        with pytest.raises(CLIError, match="Export failed"):
+            api.export_items("ris")
 
 
 # ── _pyzotero_parse helper ────────────────────────────────────────────────

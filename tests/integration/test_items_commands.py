@@ -331,6 +331,45 @@ class TestItemsExport:
         result = runner.invoke(app, ["--quiet", "items", "export", "--format", "bibtex"])
         assert result.exit_code == 64
 
+    def test_json_output_writes_file_and_envelope(
+        self, mocker, runner, tmp_profile, tmp_path
+    ) -> None:
+        """--json --output must write the file AND return JSON envelope."""
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.export_items",
+            return_value=b"@article{a, title={Test}}",
+        )
+        out_file = tmp_path / "out.bib"
+        result = runner.invoke(
+            app,
+            ["--json", "items", "export", "--format", "bibtex", "--output", str(out_file)],
+        )
+        assert result.exit_code == 0
+        assert out_file.exists()
+        assert out_file.read_bytes() == b"@article{a, title={Test}}"
+        envelope = json.loads(result.stdout)
+        assert envelope["ok"] is True
+        assert envelope["data"]["format"] == "bibtex"
+        assert envelope["data"]["byte_size"] == len(b"@article{a, title={Test}}")
+        assert "output_path" in envelope["data"]
+        assert "content" not in envelope["data"]
+
+    def test_plain_output_writes_file(self, mocker, runner, tmp_profile, tmp_path) -> None:
+        """--output without --json must write file."""
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.export_items",
+            return_value=b"@article{a, title={Test}}",
+        )
+        out_file = tmp_path / "out.bib"
+        result = runner.invoke(
+            app,
+            ["items", "export", "--format", "bibtex", "--output", str(out_file)],
+        )
+        assert result.exit_code == 0
+        assert out_file.exists()
+        assert out_file.read_bytes() == b"@article{a, title={Test}}"
+        assert "Exported" in result.stderr
+
 
 class TestItemsAttach:
     def test_attach_command_exists(self, runner, tmp_profile) -> None:
