@@ -134,6 +134,65 @@ class TestUpdate:
         assert updated["data"]["title"] == "New"
         assert result["meta_extra"]["affected_keys"] == ["ABC"]
 
+    def test_add_tags_merged_into_existing_tags(self, svc, mock_api) -> None:
+        """add_tags must merge with existing tags and not appear in API payload."""
+        mock_api.item.return_value = {
+            "key": "ABC",
+            "version": 5,
+            "data": {
+                "title": "Paper",
+                "itemType": "journalArticle",
+                "tags": [{"tag": "existing"}],
+            },
+        }
+        svc.update("ABC", patch={"add_tags": ["new-tag"]})
+        mock_api.update_item.assert_called_once()
+        sent = mock_api.update_item.call_args[0][0]
+        assert "add_tags" not in sent["data"]
+        tag_values = {t["tag"] for t in sent["data"]["tags"]}
+        assert tag_values == {"existing", "new-tag"}
+
+    def test_add_tags_when_no_existing_tags(self, svc, mock_api) -> None:
+        """add_tags works when item has no existing tags."""
+        mock_api.item.return_value = {
+            "key": "ABC",
+            "version": 5,
+            "data": {"title": "Paper", "itemType": "journalArticle", "tags": []},
+        }
+        svc.update("ABC", patch={"add_tags": ["tag-a", "tag-b"]})
+        sent = mock_api.update_item.call_args[0][0]
+        assert "add_tags" not in sent["data"]
+        tag_values = {t["tag"] for t in sent["data"]["tags"]}
+        assert tag_values == {"tag-a", "tag-b"}
+
+    def test_add_tags_deduplicates(self, svc, mock_api) -> None:
+        """add_tags does not create duplicate tag entries."""
+        mock_api.item.return_value = {
+            "key": "ABC",
+            "version": 5,
+            "data": {
+                "title": "Paper",
+                "itemType": "journalArticle",
+                "tags": [{"tag": "already"}],
+            },
+        }
+        svc.update("ABC", patch={"add_tags": ["already", "fresh"]})
+        sent = mock_api.update_item.call_args[0][0]
+        tag_values = [t["tag"] for t in sent["data"]["tags"]]
+        assert sorted(tag_values) == ["already", "fresh"]
+
+    def test_add_tags_does_not_mutate_input_patch(self, svc, mock_api) -> None:
+        """update() must not mutate the caller's patch dict."""
+        mock_api.item.return_value = {
+            "key": "ABC",
+            "version": 5,
+            "data": {"title": "Paper", "itemType": "journalArticle", "tags": []},
+        }
+        patch = {"title": "New Title", "add_tags": ["t1"]}
+        patch_before = dict(patch)
+        svc.update("ABC", patch=patch)
+        assert patch == patch_before
+
 
 class TestDelete:
     def test_multi_keys(self, svc, mock_api) -> None:

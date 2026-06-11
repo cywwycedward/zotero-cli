@@ -113,7 +113,18 @@ class ItemService:
         item = self._api.item(key)
         data = item.get("data", {})
         merged = dict(data)
-        merged.update(patch)
+
+        add_tags = patch.get("add_tags")
+        api_patch = {k: v for k, v in patch.items() if k != "add_tags"}
+        merged.update(api_patch)
+
+        if add_tags:
+            existing = {t["tag"] for t in merged.get("tags", [])}
+            for tag_name in add_tags:
+                if tag_name not in existing:
+                    merged.setdefault("tags", []).append({"tag": tag_name})
+                    existing.add(tag_name)
+
         item["data"] = merged
         self._api.update_item(item)
         return {
