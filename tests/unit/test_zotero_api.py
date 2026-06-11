@@ -584,6 +584,7 @@ class TestZoteroAPIExport:
         mock_zot.items.return_value = [{"id": "1", "type": "article-journal"}]
         result = api.export_items("csljson")
         import json
+
         parsed = json.loads(result)
         assert parsed == [{"id": "1", "type": "article-journal"}]
 
@@ -597,6 +598,7 @@ class TestZoteroAPIExport:
     def test_export_items_json_decode_error_mapped(self, mocker) -> None:
         """Non-PyZoteroError (e.g. JSONDecodeError from RIS) must be caught and mapped."""
         import json as _json
+
         api, mock_zot = _make_api(mocker)
         mock_zot.items.side_effect = _json.JSONDecodeError("bad", "", 0)
         with pytest.raises(CLIError, match="Export failed"):
