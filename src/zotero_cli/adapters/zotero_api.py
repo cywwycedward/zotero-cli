@@ -394,11 +394,12 @@ class ZoteroAPI:
         """Export items in the specified format. Returns raw bytes."""
         try:
             kwargs: dict[str, Any] = {"format": export_format}
-            if collection:
-                kwargs["collection"] = collection
             if tag:
                 kwargs["tag"] = tag
-            result = self._zot.items(**kwargs)
+            if collection:
+                result = self._zot.collection_items(collection, **kwargs)
+            else:
+                result = self._zot.items(**kwargs)
             return _serialize_export_result(result)
         except zerr.PyZoteroError as e:
             raise _map_pyzotero_exception(e) from e

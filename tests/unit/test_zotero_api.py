@@ -553,10 +553,13 @@ class TestZoteroAPIExport:
 
     def test_export_items_with_collection_filter(self, mocker) -> None:
         api, mock_zot = _make_api(mocker)
-        mock_zot.items.return_value = ""
+        mock_zot.collection_items.return_value = ""
         api.export_items("bibtex", collection="C1")
-        _, kwargs = mock_zot.items.call_args
-        assert kwargs["collection"] == "C1"
+        mock_zot.collection_items.assert_called_once()
+        args, kwargs = mock_zot.collection_items.call_args
+        assert args[0] == "C1"
+        assert kwargs["format"] == "bibtex"
+        mock_zot.items.assert_not_called()
 
     def test_export_items_with_tag_filter(self, mocker) -> None:
         api, mock_zot = _make_api(mocker)
