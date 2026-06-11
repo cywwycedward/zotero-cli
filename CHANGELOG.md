@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-06-11
+
+### Fixed
+
+- Fixed collection-scoped exports to use Zotero's collection items endpoint.
+- Fixed `export --output` so exported files are written before JSON envelope output.
+- Fixed export handling for BibTeX conversion results returned as `BibDatabase`, `list`, or `dict`.
+- Fixed item creation so `add_tags` are merged into Zotero tags instead of being sent as an unsupported API payload field.
+- Fixed collection creation result normalization for batched pyzotero responses.
+
 ## [0.2.0] - 2026-06-10
 
 ### Added
@@ -34,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial PyPI release.
 
+[0.2.1]: https://github.com/cywwycedward/zotero-cli/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/cywwycedward/zotero-cli/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/cywwycedward/zotero-cli/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/cywwycedward/zotero-cli/releases/tag/v0.1.0
