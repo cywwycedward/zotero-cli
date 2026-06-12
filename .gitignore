@@ -26,6 +26,9 @@ docs/issues/
 docs/superpowers/
 docs/features/
 
+# Worktrees
+.worktrees/
+
 # IDE
 .idea/
 .vscode/
