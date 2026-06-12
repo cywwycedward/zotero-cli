@@ -20,10 +20,13 @@ class ExportService:
         self,
         export_format: str,
         *,
+        limit: int = 100,
         collection: str | None = None,
         tag: str | None = None,
     ) -> ExportServiceResult:
-        raw = self._api.export_items(export_format, collection=collection, tag=tag)
+        raw = self._api.export_items(
+            export_format, collection=collection, tag=tag, limit=limit,
+        )
         return {
             "data": raw,
             "meta_extra": {
