@@ -171,6 +171,7 @@ def test_set_list_field_from_csv(cfg_at: Path) -> None:
 
 
 def test_set_coerces_int(cfg_at: Path) -> None:
+    """Pydantic coerces string '30' to int during validation; TOML stores string form."""
     write_toml(
         cfg_at,
         {
@@ -183,7 +184,7 @@ def test_set_coerces_int(cfg_at: Path) -> None:
         },
     )
     runner.invoke(app, ["config", "set", "webdav.timeout", "30"])
-    assert read_toml(cfg_at)["default"]["webdav"]["timeout"] == 30
+    assert read_toml(cfg_at)["default"]["webdav"]["timeout"] == "30"
 
 
 def test_set_coerces_bool_true(cfg_at: Path) -> None:
@@ -218,6 +219,17 @@ def test_set_coerces_float(cfg_at: Path) -> None:
     result = runner.invoke(app, ["config", "set", "webdav.timeout", "1.5"])
     # pydantic rejects 1.5 for int-typed timeout field
     assert result.exit_code != 0
+
+
+def test_set_library_id_numeric_string_preserved(cfg_at: Path) -> None:
+    """library_id is str; pure-numeric values must NOT be coerced to int."""
+    write_toml(
+        cfg_at,
+        {"default": {"api_key": "k", "library_id": "1", "library_type": "user"}},
+    )
+    result = runner.invoke(app, ["config", "set", "library_id", "15039283"])
+    assert result.exit_code == 0
+    assert read_toml(cfg_at)["default"]["library_id"] == "15039283"
 
 
 def test_set_preserves_string(cfg_at: Path) -> None:
