@@ -25,7 +25,10 @@ class ExportService:
         tag: str | None = None,
     ) -> ExportServiceResult:
         raw = self._api.export_items(
-            export_format, collection=collection, tag=tag, limit=limit,
+            export_format,
+            collection=collection,
+            tag=tag,
+            limit=limit,
         )
         return {
             "data": raw,

@@ -629,6 +629,12 @@ class TestZoteroAPIExport:
         result = api.export_items("ris")
         assert result == b""
 
+    def test_none_parts_filtered_from_serialization(self, mocker) -> None:
+        api, mock_zot = _make_api(mocker)
+        mock_zot.items.return_value = ["entry one", None, "entry two", None]
+        result = api.export_items("ris")
+        assert result == b"entry one\nentry two"
+
     def test_uppercase_format_accepted(self, mocker) -> None:
         """Users may type 'RIS' or 'BibTeX'; input is normalized to lowercase."""
         api, mock_zot = _make_api(mocker)
@@ -638,11 +644,24 @@ class TestZoteroAPIExport:
         assert kwargs["content"] == "ris"
         assert result == b"TY  - JOUR\nER  -\n"
 
-    @pytest.mark.parametrize("fmt", [
-        "bibtex", "biblatex", "bookmarks", "coins", "csv",
-        "mods", "refer", "rdf_bibliontology", "rdf_dc", "rdf_zotero",
-        "ris", "tei", "wikipedia",
-    ])
+    @pytest.mark.parametrize(
+        "fmt",
+        [
+            "bibtex",
+            "biblatex",
+            "bookmarks",
+            "coins",
+            "csv",
+            "mods",
+            "refer",
+            "rdf_bibliontology",
+            "rdf_dc",
+            "rdf_zotero",
+            "ris",
+            "tei",
+            "wikipedia",
+        ],
+    )
     def test_all_14_formats_accepted(self, mocker, fmt) -> None:
         """Every official Zotero text export format must pass whitelist validation.
 

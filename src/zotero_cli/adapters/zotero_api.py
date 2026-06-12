@@ -32,22 +32,24 @@ from zotero_cli.models.errors import (
 PyzoteroResponse: TypeAlias = dict[str, Any]
 PyzoteroTemplate: TypeAlias = dict[str, Any]
 
-ZOTERO_ITEM_EXPORT_FORMATS: frozenset[str] = frozenset({
-    "bibtex",
-    "biblatex",
-    "bookmarks",
-    "coins",
-    "csljson",
-    "csv",
-    "mods",
-    "refer",
-    "rdf_bibliontology",
-    "rdf_dc",
-    "rdf_zotero",
-    "ris",
-    "tei",
-    "wikipedia",
-})
+ZOTERO_ITEM_EXPORT_FORMATS: frozenset[str] = frozenset(
+    {
+        "bibtex",
+        "biblatex",
+        "bookmarks",
+        "coins",
+        "csljson",
+        "csv",
+        "mods",
+        "refer",
+        "rdf_bibliontology",
+        "rdf_dc",
+        "rdf_zotero",
+        "ris",
+        "tei",
+        "wikipedia",
+    }
+)
 
 
 # ── Task 4: _select_backend ────────────────────────────────────────────────
@@ -116,14 +118,14 @@ def _pyzotero_parse(result: object) -> Any:
     return result
 
 
-def _serialize_export_result(result: list, export_format: str) -> bytes:
+def _serialize_export_result(result: list[object], export_format: str) -> bytes:
     import json as _json
 
     if not result:
         return b""
     if export_format == "csljson":
         return _json.dumps(result, ensure_ascii=False, indent=2).encode("utf-8")
-    return "\n".join(str(part) for part in result).encode("utf-8")
+    return "\n".join(str(part) for part in result if part is not None).encode("utf-8")
 
 
 # ── Task 2: ZoteroAPI ──────────────────────────────────────────────────────
