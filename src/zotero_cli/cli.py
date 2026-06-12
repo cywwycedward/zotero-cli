@@ -42,7 +42,14 @@ def _global(
     profile: Annotated[str, typer.Option("--profile", help="Profile name")] = "default",
     quiet: Annotated[bool, typer.Option("--quiet", "-q", help="Quiet mode: keys only")] = False,
     version: Annotated[
-        bool, typer.Option("--version", "-v", callback=_version_callback, is_eager=True, help="Show version and exit")
+        bool,
+        typer.Option(
+            "--version",
+            "-v",
+            callback=_version_callback,
+            is_eager=True,
+            help="Show version and exit",
+        ),
     ] = False,
     config_path: Annotated[Path | None, typer.Option("--config-path", hidden=True)] = None,
 ) -> None:
