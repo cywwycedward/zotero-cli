@@ -7,6 +7,7 @@ from typing import Annotated
 
 import typer
 
+from zotero_cli import __version__
 from zotero_cli.commands._runner import GlobalOptions
 from zotero_cli.commands.collections import app as collections_app
 from zotero_cli.commands.config import app as config_app
@@ -27,12 +28,22 @@ app.add_typer(tags_app, name="tags")
 app.command("schema")(schema_command)
 
 
+def _version_callback(value: bool) -> None:
+    """Print version and exit. Used as is_eager callback for --version/-v."""
+    if value:
+        typer.echo(f"zotero-cli {__version__}")
+        raise typer.Exit()
+
+
 @app.callback()
 def _global(
     ctx: typer.Context,
     json_mode: Annotated[bool, typer.Option("--json", help="Output as JSON envelope")] = False,
     profile: Annotated[str, typer.Option("--profile", help="Profile name")] = "default",
     quiet: Annotated[bool, typer.Option("--quiet", "-q", help="Quiet mode: keys only")] = False,
+    version: Annotated[
+        bool, typer.Option("--version", "-v", callback=_version_callback, is_eager=True, help="Show version and exit")
+    ] = False,
     config_path: Annotated[Path | None, typer.Option("--config-path", hidden=True)] = None,
 ) -> None:
     ctx.obj = GlobalOptions(
