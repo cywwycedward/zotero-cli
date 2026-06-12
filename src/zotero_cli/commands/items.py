@@ -490,6 +490,7 @@ def export_items(
     export_format: Annotated[
         str, typer.Option("--format", help="bibtex / ris / csljson / ...")
     ] = "bibtex",
+    limit: Annotated[int, typer.Option("--limit", help="Max items to export")] = 100,
     collection: Annotated[
         str | None, typer.Option("--collection", help="Filter by collection key")
     ] = None,
@@ -534,7 +535,7 @@ def export_items(
     try:
         profile = _get_profile(ctx)
         svc = ExportService.from_profile(profile)
-        result = svc.export(export_format, collection=collection, tag=tag)
+        result = svc.export(export_format, collection=collection, tag=tag, limit=limit)
     except CLIError as err:
         elapsed = int((time.perf_counter() - start) * 1000)
         emit_failure(err, "items.export", elapsed, options)

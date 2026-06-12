@@ -370,6 +370,26 @@ class TestItemsExport:
         assert out_file.read_bytes() == b"@article{a, title={Test}}"
         assert "Exported" in result.stderr
 
+    def test_export_with_limit(self, mocker, runner, tmp_profile) -> None:
+        mock = mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.export_items",
+            return_value=b"TY  - JOUR\nER  -\n",
+        )
+        result = runner.invoke(app, ["items", "export", "--format", "ris", "--limit", "10"])
+        assert result.exit_code == 0
+        _, kwargs = mock.call_args
+        assert kwargs["limit"] == 10
+
+    def test_export_default_limit_is_100(self, mocker, runner, tmp_profile) -> None:
+        mock = mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.export_items",
+            return_value=b"@article{key1, title={Test}}",
+        )
+        result = runner.invoke(app, ["items", "export", "--format", "bibtex"])
+        assert result.exit_code == 0
+        _, kwargs = mock.call_args
+        assert kwargs["limit"] == 100
+
 
 class TestItemsAttach:
     def test_attach_command_exists(self, runner, tmp_profile) -> None:
