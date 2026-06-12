@@ -16,6 +16,7 @@ from zotero_cli.models.errors import (
     MutuallyExclusiveArgsError,
     NetworkError,
     StorageQuotaExceededError,
+    UnsupportedExportFormatError,
 )
 
 # ── Task 2: ZoteroAPI init ────────────────────────────────────────────────
@@ -606,6 +607,14 @@ class TestZoteroAPIExport:
         mock_zot.items.side_effect = _json.JSONDecodeError("bad", "", 0)
         with pytest.raises(CLIError, match="Export failed"):
             api.export_items("ris")
+
+
+class TestExportFormatValidation:
+    def test_unsupported_format_raises_error(self, mocker) -> None:
+        api, mock_zot = _make_api(mocker)
+        with pytest.raises(UnsupportedExportFormatError, match="nosuchformat"):
+            api.export_items("nosuchformat")
+        mock_zot.items.assert_not_called()
 
 
 # ── _pyzotero_parse helper ────────────────────────────────────────────────

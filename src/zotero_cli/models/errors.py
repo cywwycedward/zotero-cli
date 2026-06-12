@@ -68,6 +68,10 @@ class InvalidItemTypeError(CLIError):
     code = "INVALID_ITEM_TYPE"
 
 
+class UnsupportedExportFormatError(CLIError):
+    code = "UNSUPPORTED_EXPORT_FORMAT"
+
+
 class InvalidDateFormatError(CLIError):
     code = "INVALID_DATE_FORMAT"
 
@@ -213,6 +217,7 @@ _REGISTRY: dict[str, type[CLIError]] = {
         TagNotFoundError,
         FeedNotFoundError,
         InvalidItemTypeError,
+        UnsupportedExportFormatError,
         InvalidDateFormatError,
         InvalidFieldError,
         MissingRequiredArgError,
