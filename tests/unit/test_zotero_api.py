@@ -534,79 +534,127 @@ class TestZoteroAPITagMethods:
 
 
 class TestZoteroAPIExport:
-    def test_export_items_str_result_encoded(self, mocker) -> None:
-        api, mock_zot = _make_api(mocker)
-        mock_zot.items.return_value = "bibtex content"
-        result = api.export_items("bibtex")
-        assert result == b"bibtex content"
+    """All export tests assume content= path (not format=)."""
 
-    def test_export_items_bytes_result_passthrough(self, mocker) -> None:
+    def test_ris_via_content_path(self, mocker) -> None:
+        """RIS: pyzotero content='ris' returns list[str]."""
         api, mock_zot = _make_api(mocker)
-        mock_zot.items.return_value = b"\x89PNG raw"
+        mock_zot.items.return_value = ["TY  - JOUR\nTI  - Test\nER  -\n"]
         result = api.export_items("ris")
-        assert result == b"\x89PNG raw"
-
-    def test_export_items_other_result_str_encoded(self, mocker) -> None:
-        api, mock_zot = _make_api(mocker)
-        mock_zot.items.return_value = 12345
-        result = api.export_items("csljson")
-        assert result == b"12345"
-
-    def test_export_items_with_collection_filter(self, mocker) -> None:
-        api, mock_zot = _make_api(mocker)
-        mock_zot.collection_items.return_value = ""
-        api.export_items("bibtex", collection="C1")
-        mock_zot.collection_items.assert_called_once()
-        args, kwargs = mock_zot.collection_items.call_args
-        assert args[0] == "C1"
-        assert kwargs["format"] == "bibtex"
-        mock_zot.items.assert_not_called()
-
-    def test_export_items_with_tag_filter(self, mocker) -> None:
-        api, mock_zot = _make_api(mocker)
-        mock_zot.items.return_value = ""
-        api.export_items("bibtex", tag="urgent")
         _, kwargs = mock_zot.items.call_args
-        assert kwargs["tag"] == "urgent"
+        assert "content" in kwargs
+        assert kwargs["content"] == "ris"
+        assert "format" not in kwargs
+        assert result == b"TY  - JOUR\nTI  - Test\nER  -\n"
 
-    def test_export_items_bibdatabase_serialized(self, mocker) -> None:
-        """bibtex: pyzotero returns BibDatabase; must serialize to BibTeX text."""
-        from bibtexparser.bibdatabase import BibDatabase
-
+    def test_bibtex_via_content_path(self, mocker) -> None:
+        """BibTeX: pyzotero content='bibtex' returns list[str]."""
         api, mock_zot = _make_api(mocker)
-        bib_db = BibDatabase()
-        bib_db.entries = [{"ID": "key1", "ENTRYTYPE": "article", "title": "Test Paper"}]
-        mock_zot.items.return_value = bib_db
+        mock_zot.items.return_value = ["@article{key1, title={Test}}"]
         result = api.export_items("bibtex")
-        assert b"key1" in result
-        assert b"Test Paper" in result
-        assert b"BibDatabase" not in result
+        _, kwargs = mock_zot.items.call_args
+        assert kwargs["content"] == "bibtex"
+        assert result == b"@article{key1, title={Test}}"
 
-    def test_export_items_list_of_dict_as_json(self, mocker) -> None:
-        """csljson: pyzotero returns list[dict]; must serialize as JSON."""
+    def test_csljson_returns_json_bytes(self, mocker) -> None:
+        """csljson: pyzotero content='csljson' returns list[dict], serialize as JSON."""
+        import json
+
         api, mock_zot = _make_api(mocker)
         mock_zot.items.return_value = [{"id": "1", "type": "article-journal"}]
         result = api.export_items("csljson")
-        import json
-
+        _, kwargs = mock_zot.items.call_args
+        assert kwargs["content"] == "csljson"
         parsed = json.loads(result)
         assert parsed == [{"id": "1", "type": "article-journal"}]
 
-    def test_export_items_list_of_str_joined(self, mocker) -> None:
-        """Fallback: list[str] items joined with newlines."""
+    def test_list_str_joined_with_newline(self, mocker) -> None:
+        """Multiple items in list[str] are joined with newlines."""
         api, mock_zot = _make_api(mocker)
         mock_zot.items.return_value = ["entry one", "entry two"]
         result = api.export_items("wikipedia")
         assert result == b"entry one\nentry two"
 
-    def test_export_items_json_decode_error_mapped(self, mocker) -> None:
-        """Non-PyZoteroError (e.g. JSONDecodeError from RIS) must be caught and mapped."""
-        import json as _json
-
+    def test_collection_filter_uses_collection_items(self, mocker) -> None:
         api, mock_zot = _make_api(mocker)
-        mock_zot.items.side_effect = _json.JSONDecodeError("bad", "", 0)
+        mock_zot.collection_items.return_value = ["TY  - JOUR\nER  -\n"]
+        api.export_items("ris", collection="C1")
+        mock_zot.collection_items.assert_called_once()
+        args, kwargs = mock_zot.collection_items.call_args
+        assert args[0] == "C1"
+        assert kwargs["content"] == "ris"
+        assert "format" not in kwargs
+        mock_zot.items.assert_not_called()
+
+    def test_tag_filter_passed(self, mocker) -> None:
+        api, mock_zot = _make_api(mocker)
+        mock_zot.items.return_value = []
+        api.export_items("bibtex", tag="urgent")
+        _, kwargs = mock_zot.items.call_args
+        assert kwargs["tag"] == "urgent"
+        assert kwargs["content"] == "bibtex"
+
+    def test_collection_and_tag_combined(self, mocker) -> None:
+        api, mock_zot = _make_api(mocker)
+        mock_zot.collection_items.return_value = []
+        api.export_items("ris", collection="C1", tag="nlp")
+        _, kwargs = mock_zot.collection_items.call_args
+        assert kwargs["content"] == "ris"
+        assert kwargs["tag"] == "nlp"
+
+    def test_limit_passed_to_pyzotero(self, mocker) -> None:
+        api, mock_zot = _make_api(mocker)
+        mock_zot.items.return_value = []
+        api.export_items("ris", limit=50)
+        _, kwargs = mock_zot.items.call_args
+        assert kwargs["limit"] == 50
+
+    def test_pyzotero_error_mapped(self, mocker) -> None:
+        api, mock_zot = _make_api(mocker)
+        mock_zot.items.side_effect = zerr.ResourceNotFoundError("not found")
+        with pytest.raises(CLIError):
+            api.export_items("bibtex")
+
+    def test_non_pyzotero_exception_wrapped_as_cli_error(self, mocker) -> None:
+        """Non-PyZoteroError exceptions (e.g. unexpected TypeError) must be
+        caught and wrapped as CLIError so they stay inside the CLI error model."""
+        api, mock_zot = _make_api(mocker)
+        mock_zot.items.side_effect = TypeError("unexpected return type")
         with pytest.raises(CLIError, match="Export failed"):
             api.export_items("ris")
+
+    def test_empty_list_returns_empty_bytes(self, mocker) -> None:
+        api, mock_zot = _make_api(mocker)
+        mock_zot.items.return_value = []
+        result = api.export_items("ris")
+        assert result == b""
+
+    def test_uppercase_format_accepted(self, mocker) -> None:
+        """Users may type 'RIS' or 'BibTeX'; input is normalized to lowercase."""
+        api, mock_zot = _make_api(mocker)
+        mock_zot.items.return_value = ["TY  - JOUR\nER  -\n"]
+        result = api.export_items("RIS")
+        _, kwargs = mock_zot.items.call_args
+        assert kwargs["content"] == "ris"
+        assert result == b"TY  - JOUR\nER  -\n"
+
+    @pytest.mark.parametrize("fmt", [
+        "bibtex", "biblatex", "bookmarks", "coins", "csv",
+        "mods", "refer", "rdf_bibliontology", "rdf_dc", "rdf_zotero",
+        "ris", "tei", "wikipedia",
+    ])
+    def test_all_14_formats_accepted(self, mocker, fmt) -> None:
+        """Every official Zotero text export format must pass whitelist validation.
+
+        csljson is excluded here because it takes the JSON serialization path;
+        it has its own dedicated test (test_csljson_returns_json_bytes).
+        """
+        api, mock_zot = _make_api(mocker)
+        mock_zot.items.return_value = ["dummy"]
+        result = api.export_items(fmt)
+        _, kwargs = mock_zot.items.call_args
+        assert kwargs["content"] == fmt
+        assert result == b"dummy"
 
 
 class TestExportFormatValidation:

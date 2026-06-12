@@ -25,11 +25,29 @@ from zotero_cli.models.errors import (
     MutuallyExclusiveArgsError,
     NetworkError,
     StorageQuotaExceededError,
+    UnsupportedExportFormatError,
 )
 
 # Explicit alias per DEVELOPMENT.md §4.2 adapter boundary.
 PyzoteroResponse: TypeAlias = dict[str, Any]
 PyzoteroTemplate: TypeAlias = dict[str, Any]
+
+ZOTERO_ITEM_EXPORT_FORMATS: frozenset[str] = frozenset({
+    "bibtex",
+    "biblatex",
+    "bookmarks",
+    "coins",
+    "csljson",
+    "csv",
+    "mods",
+    "refer",
+    "rdf_bibliontology",
+    "rdf_dc",
+    "rdf_zotero",
+    "ris",
+    "tei",
+    "wikipedia",
+})
 
 
 # ── Task 4: _select_backend ────────────────────────────────────────────────
@@ -98,29 +116,14 @@ def _pyzotero_parse(result: object) -> Any:
     return result
 
 
-def _serialize_export_result(result: object) -> bytes:
+def _serialize_export_result(result: list, export_format: str) -> bytes:
     import json as _json
 
-    if isinstance(result, bytes):
-        return result
-    if isinstance(result, str):
-        return result.encode("utf-8")
-    if hasattr(result, "entries") and not isinstance(result, (dict, list)):
-        try:
-            import bibtexparser  # type: ignore[import-untyped]
-        except ImportError as e:
-            raise CLIError(
-                "bibtexparser is required for BibTeX export but not installed",
-                cause=e,
-            ) from e
-        return bibtexparser.dumps(result).encode("utf-8")  # type: ignore[no-any-return]
-    if isinstance(result, dict):
+    if not result:
+        return b""
+    if export_format == "csljson":
         return _json.dumps(result, ensure_ascii=False, indent=2).encode("utf-8")
-    if isinstance(result, list):
-        if result and isinstance(result[0], dict):
-            return _json.dumps(result, ensure_ascii=False, indent=2).encode("utf-8")
-        return "\n".join(str(item) for item in result).encode("utf-8")
-    return str(result).encode("utf-8")
+    return "\n".join(str(part) for part in result).encode("utf-8")
 
 
 # ── Task 2: ZoteroAPI ──────────────────────────────────────────────────────
@@ -388,19 +391,26 @@ class ZoteroAPI:
         self,
         export_format: str,
         *,
+        limit: int = 100,
         collection: str | None = None,
         tag: str | None = None,
     ) -> bytes:
-        """Export items in the specified format. Returns raw bytes."""
+        """Export items in the specified format via pyzotero content= path."""
+        export_format = export_format.lower()
+        if export_format not in ZOTERO_ITEM_EXPORT_FORMATS:
+            raise UnsupportedExportFormatError(
+                f"Unsupported export format: {export_format!r}",
+                hint=f"Supported formats: {', '.join(sorted(ZOTERO_ITEM_EXPORT_FORMATS))}",
+            )
         try:
-            kwargs: dict[str, Any] = {"format": export_format}
+            kwargs: dict[str, Any] = {"content": export_format, "limit": limit}
             if tag:
                 kwargs["tag"] = tag
             if collection:
                 result = self._zot.collection_items(collection, **kwargs)
             else:
                 result = self._zot.items(**kwargs)
-            return _serialize_export_result(result)
+            return _serialize_export_result(result, export_format)
         except zerr.PyZoteroError as e:
             raise _map_pyzotero_exception(e) from e
         except CLIError:
