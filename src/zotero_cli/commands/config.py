@@ -140,15 +140,10 @@ def _set_dotpath(data: dict[str, Any], dotpath: str, value: str) -> None:
 
 
 def _coerce_value(value: str) -> Any:
-    """Auto-detect type from string to maintain TOML schema consistency."""
+    """Auto-detect bool from string. Pydantic handles int/float coercion during validation."""
     if value.lower() in ("true", "false"):
         return value.lower() == "true"
-    if value.isdigit() or (value.startswith("-") and value[1:].isdigit()):
-        return int(value)
-    try:
-        return float(value)
-    except ValueError:
-        return value
+    return value
 
 
 # ── get ────────────────────────────────────────────────────────────────────
