@@ -47,9 +47,7 @@ SAMPLE_MESSAGE: dict[str, Any] = {
 
 
 class TestAddDoiDryRun:
-    def test_dry_run_json_output(
-        self, mocker, runner, tmp_profile, monkeypatch, tmp_path
-    ) -> None:
+    def test_dry_run_json_output(self, mocker, runner, tmp_profile, monkeypatch, tmp_path) -> None:
         monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
         mocker.patch(
             "zotero_cli.adapters.doi_metadata.crossref.CrossrefProvider.fetch",
@@ -172,9 +170,7 @@ class TestAddDoiCreate:
         assert "Created" in result.stdout
         assert "DOIKEY" in result.stdout
 
-    def test_create_with_tags(
-        self, mocker, runner, tmp_profile, monkeypatch, tmp_path
-    ) -> None:
+    def test_create_with_tags(self, mocker, runner, tmp_profile, monkeypatch, tmp_path) -> None:
         monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
         mocker.patch(
             "zotero_cli.adapters.doi_metadata.crossref.CrossrefProvider.fetch",

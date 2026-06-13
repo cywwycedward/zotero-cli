@@ -70,9 +70,7 @@ class TestFeedNotFound:
 class TestFeedsListCommand:
     @patch("zotero_cli.commands.feeds.FeedService")
     @patch("zotero_cli.commands.feeds.load_config")
-    def test_list_feeds_success(
-        self, mock_load_config: MagicMock, mock_svc_cls: MagicMock
-    ) -> None:
+    def test_list_feeds_success(self, mock_load_config: MagicMock, mock_svc_cls: MagicMock) -> None:
         mock_profile = MagicMock()
         mock_profile.feed_fields.list = ["feed_id", "name", "url", "unread_count", "total_count"]
         mock_load_config.return_value = mock_profile
@@ -93,9 +91,7 @@ class TestFeedsListCommand:
 
     @patch("zotero_cli.commands.feeds.FeedService")
     @patch("zotero_cli.commands.feeds.load_config")
-    def test_list_feeds_quiet(
-        self, mock_load_config: MagicMock, mock_svc_cls: MagicMock
-    ) -> None:
+    def test_list_feeds_quiet(self, mock_load_config: MagicMock, mock_svc_cls: MagicMock) -> None:
         mock_profile = MagicMock()
         mock_profile.feed_fields.list = ["feed_id", "name", "url", "unread_count", "total_count"]
         mock_load_config.return_value = mock_profile
@@ -116,9 +112,7 @@ class TestFeedsListCommand:
 
     @patch("zotero_cli.commands.feeds.FeedService")
     @patch("zotero_cli.commands.feeds.load_config")
-    def test_list_feeds_empty(
-        self, mock_load_config: MagicMock, mock_svc_cls: MagicMock
-    ) -> None:
+    def test_list_feeds_empty(self, mock_load_config: MagicMock, mock_svc_cls: MagicMock) -> None:
         mock_profile = MagicMock()
         mock_profile.feed_fields.list = ["feed_id", "name", "url", "unread_count", "total_count"]
         mock_load_config.return_value = mock_profile
