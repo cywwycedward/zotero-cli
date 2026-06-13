@@ -10,7 +10,7 @@ from zotero_cli.models.errors import SqliteNotFoundError, SqliteSchemaIncompatib
 
 REQUIRED_TABLES = {"items", "feedItems", "feeds", "fields", "itemData", "itemDataValues"}
 REQUIRED_FEEDITEMS_COLUMNS = {"guid", "readTime", "translatedTime"}
-FIELD_NAMES = {"title", "date", "url", "abstractNote"}
+FIELD_NAMES = {"date"}
 
 
 class SQLiteReader:
@@ -58,7 +58,7 @@ class SQLiteReader:
 
     def _cache_field_ids(self) -> None:
         cur = self._conn.execute(
-            "SELECT fieldID, fieldName FROM fields WHERE fieldName IN (?, ?, ?, ?)",
+            "SELECT fieldID, fieldName FROM fields WHERE fieldName IN (?)",
             tuple(FIELD_NAMES),
         )
         for row in cur.fetchall():
@@ -97,34 +97,19 @@ class SQLiteReader:
         include_undated: bool = False,
         limit: int = 100,
     ) -> list[dict[str, Any]]:
-        fid_title = self._field_id("title")
         fid_date = self._field_id("date")
-        fid_url = self._field_id("url")
-        fid_abstract = self._field_id("abstractNote")
 
         sql = """
         SELECT
             fi.itemID AS item_id, fi.guid, fi.readTime AS read_time,
             fi.translatedTime AS translated_time,
-            COALESCE(title_v.value, '') AS title,
             COALESCE(date_v.value, '') AS date_raw,
-            SUBSTR(COALESCE(date_v.value, ''), 1, 10) AS date_sql,
-            COALESCE(url_v.value, '') AS url,
-            COALESCE(abstract_v.value, '') AS abstract
+            SUBSTR(COALESCE(date_v.value, ''), 1, 10) AS date_sql
         FROM feedItems fi
         JOIN items i ON i.itemID = fi.itemID
-        LEFT JOIN itemData title_id ON title_id.itemID = i.itemID
-            AND title_id.fieldID = ?
-        LEFT JOIN itemDataValues title_v ON title_v.valueID = title_id.valueID
         LEFT JOIN itemData date_id ON date_id.itemID = i.itemID
             AND date_id.fieldID = ?
         LEFT JOIN itemDataValues date_v ON date_v.valueID = date_id.valueID
-        LEFT JOIN itemData url_id ON url_id.itemID = i.itemID
-            AND url_id.fieldID = ?
-        LEFT JOIN itemDataValues url_v ON url_v.valueID = url_id.valueID
-        LEFT JOIN itemData abstract_id ON abstract_id.itemID = i.itemID
-            AND abstract_id.fieldID = ?
-        LEFT JOIN itemDataValues abstract_v ON abstract_v.valueID = abstract_id.valueID
         WHERE i.libraryID = ?
           AND (
             (? = 1 AND date_v.value IS NULL)
@@ -138,10 +123,7 @@ class SQLiteReader:
         LIMIT ?
         """
         params = (
-            fid_title,
             fid_date,
-            fid_url,
-            fid_abstract,
             feed_id,
             1 if include_undated else 0,
             date_start,

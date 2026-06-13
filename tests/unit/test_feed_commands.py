@@ -282,11 +282,8 @@ class TestDynamicFieldMerge:
                 "item_id": 1,
                 "feed_id": 10,
                 "guid": "g1",
-                "title": "",
                 "date_raw": "2024-01-01",
                 "date_sql": "2024-01-01",
-                "url": "",
-                "abstract": "",
                 "read_time": None,
                 "translated_time": None,
             }
@@ -305,7 +302,7 @@ class TestDynamicFieldMerge:
         d = items[0].model_dump()
         assert d["DOI"] == "10.1234/test"
 
-    def test_base_row_fields_take_precedence(self) -> None:
+    def test_dynamic_fields_populate_title_and_url(self) -> None:
         mock_reader = MagicMock()
         mock_reader.feed_exists.return_value = True
         mock_reader.query_items.return_value = [
@@ -313,11 +310,8 @@ class TestDynamicFieldMerge:
                 "item_id": 1,
                 "feed_id": 10,
                 "guid": "g1",
-                "title": "Base Title",
                 "date_raw": "2024-06-15",
                 "date_sql": "2024-06-15",
-                "url": "https://base.com",
-                "abstract": "",
                 "read_time": None,
                 "translated_time": None,
             }
@@ -328,5 +322,5 @@ class TestDynamicFieldMerge:
         mock_reader.query_creators.return_value = {}
         svc = FeedService(mock_reader)
         items = svc.list_items(10)
-        assert items[0].title == "Base Title"
-        assert items[0].url == "https://base.com"
+        assert items[0].title == "Dynamic Title"
+        assert items[0].url == "https://dynamic.com"
