@@ -213,9 +213,7 @@ class TestCrossrefEmail:
         assert p.crossref_email == "user@example.com"
 
     def test_empty_string_normalized_to_none(self) -> None:
-        p = ProfileConfig(
-            api_key="k", library_id="1", library_type="user", crossref_email=""
-        )
+        p = ProfileConfig(api_key="k", library_id="1", library_type="user", crossref_email="")
         assert p.crossref_email is None
 
     def test_missing_at_sign_rejected(self) -> None:

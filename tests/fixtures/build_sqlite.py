@@ -47,8 +47,7 @@ def build_with_n_items(path: Path, n: int = 1000) -> None:
         INSERT INTO feeds VALUES(1, 'Perf Feed', 'https://example.com/perf',
             '2024-01-01', '2024-01-01', NULL, 60)
     """)
-    for fid, fname in [(1, "title"), (2, "abstractNote"), (13, "url"), (14, "date"),
-                       (59, "DOI")]:
+    for fid, fname in [(1, "title"), (2, "abstractNote"), (13, "url"), (14, "date"), (59, "DOI")]:
         db.execute("INSERT INTO fields VALUES(?, ?)", (fid, fname))
     db.execute("INSERT INTO creatorTypes VALUES(1, 'author')")
 
@@ -114,8 +113,7 @@ if __name__ == "__main__":
     """)
 
     # fields: title=1, abstractNote=2, url=13, date=14, DOI=59
-    for fid, fname in [(1, "title"), (2, "abstractNote"), (13, "url"), (14, "date"),
-                       (59, "DOI")]:
+    for fid, fname in [(1, "title"), (2, "abstractNote"), (13, "url"), (14, "date"), (59, "DOI")]:
         db.execute("INSERT INTO fields VALUES(?, ?)", (fid, fname))
 
     # creatorTypes

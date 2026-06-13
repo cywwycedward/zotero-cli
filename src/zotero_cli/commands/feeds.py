@@ -50,9 +50,7 @@ def _get_svc(ctx: typer.Context) -> FeedService:
 @app.command("list")
 def list_feeds(
     ctx: typer.Context,
-    all_fields: Annotated[
-        bool, typer.Option("--all-fields", help="Show all fields")
-    ] = False,
+    all_fields: Annotated[bool, typer.Option("--all-fields", help="Show all fields")] = False,
 ) -> None:
     """List all RSS feed subscriptions."""
     options: GlobalOptions = ctx.obj

@@ -88,8 +88,13 @@ class TestQueryItemData:
                                   creatorTypeID INTEGER, orderIndex INTEGER,
                                   PRIMARY KEY(itemID, creatorID, orderIndex));
         """)
-        for fid, fname in [(1, "title"), (14, "date"), (13, "url"),
-                            (2, "abstractNote"), (59, "DOI")]:
+        for fid, fname in [
+            (1, "title"),
+            (14, "date"),
+            (13, "url"),
+            (2, "abstractNote"),
+            (59, "DOI"),
+        ]:
             db.execute("INSERT INTO fields VALUES(?, ?)", (fid, fname))
         db.execute("INSERT INTO libraries VALUES(10, 'feed')")
         db.execute("INSERT INTO feeds VALUES(10,'F','http://f',NULL,NULL,NULL,60)")

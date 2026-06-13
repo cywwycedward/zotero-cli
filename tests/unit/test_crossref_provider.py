@@ -59,9 +59,9 @@ class TestFetch:
         ],
     )
     def test_reserved_chars_encoded(self, doi: str, expected_path: str) -> None:
-        route = respx.get(
-            url=f"https://api.crossref.org/works/{expected_path}"
-        ).mock(return_value=httpx.Response(200, json=SAMPLE_CROSSREF_MESSAGE))
+        route = respx.get(url=f"https://api.crossref.org/works/{expected_path}").mock(
+            return_value=httpx.Response(200, json=SAMPLE_CROSSREF_MESSAGE)
+        )
         provider = CrossrefProvider()
         provider.fetch(doi)
         assert route.called
@@ -317,9 +317,7 @@ class TestCreatorMapping:
             "author": [{"name": "WHO"}],
         }
         result = self._convert(raw)
-        assert result["creators"] == [
-            {"creatorType": "author", "name": "WHO"}
-        ]
+        assert result["creators"] == [{"creatorType": "author", "name": "WHO"}]
 
     def test_editor(self) -> None:
         raw = {
