@@ -288,9 +288,9 @@ def _render_quiet(envelope: Envelope) -> str:
 
 
 def _apply_field_filter(data: Any, fields: list[str]) -> Any:
-    """Restrict dict keys to those listed in *fields*, preserving data order."""
+    """Restrict dict keys to those listed in *fields*, preserving config order."""
     if isinstance(data, dict):
-        return {k: v for k, v in data.items() if k in fields}
+        return {k: data[k] for k in fields if k in data}
     if isinstance(data, list):
         return [_apply_field_filter(item, fields) for item in data]
     return data
