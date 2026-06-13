@@ -52,11 +52,17 @@ class FeedService:
             limit=limit,
         )
         item_ids = [r["item_id"] for r in rows]
+        item_data_map = self._reader.query_item_data(item_ids)
         creators_map = self._reader.query_creators(item_ids)
         items: list[FeedItem] = []
         for r in rows:
-            creators = creators_map.get(r["item_id"], [])
-            r["creators"] = [
+            iid = r["item_id"]
+            dynamic = {k: v for k, v in item_data_map.get(iid, {}).items() if k != "date"}
+            merged = {**dynamic, **r}
+            if "abstractNote" in merged:
+                merged.setdefault("abstract", merged.pop("abstractNote"))
+            creators = creators_map.get(iid, [])
+            merged["creators"] = [
                 {
                     "first_name": c.get("firstName", ""),
                     "last_name": c.get("lastName", ""),
@@ -65,5 +71,5 @@ class FeedService:
                 }
                 for c in creators
             ]
-            items.append(FeedItem(**r))
+            items.append(FeedItem(**merged))
         return items

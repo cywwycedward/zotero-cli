@@ -86,3 +86,25 @@ class TestEmptyFeed:
         empty = next(f for f in feeds if f.name == "Empty Feed")
         assert empty.total_count == 0
         assert empty.unread_count == 0
+
+
+class TestDynamicItemDataFields:
+    """Dynamic itemData fields (DOI, etc.) are included in feed items."""
+
+    def test_item_with_doi_includes_doi(self, svc: FeedService) -> None:
+        items = svc.list_items(10, date_filter="2024-06", include_undated=False)
+        item_1001 = next(it for it in items if it.item_id == 1001)
+        d = item_1001.model_dump()
+        assert d["DOI"] == "10.1234/full-date-test"
+
+    def test_item_without_doi_omits_doi(self, svc: FeedService) -> None:
+        items = svc.list_items(10, date_filter="2024-06", include_undated=False)
+        item_1002 = next(it for it in items if it.item_id == 1002)
+        d = item_1002.model_dump()
+        assert "DOI" not in d
+
+    def test_all_items_still_have_title(self, svc: FeedService) -> None:
+        items = svc.list_items(10, include_undated=True)
+        for it in items:
+            d = it.model_dump()
+            assert "title" in d

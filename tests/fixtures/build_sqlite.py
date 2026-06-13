@@ -47,7 +47,7 @@ def build_with_n_items(path: Path, n: int = 1000) -> None:
         INSERT INTO feeds VALUES(1, 'Perf Feed', 'https://example.com/perf',
             '2024-01-01', '2024-01-01', NULL, 60)
     """)
-    for fid, fname in [(1, "title"), (2, "abstractNote"), (13, "url"), (14, "date")]:
+    for fid, fname in [(1, "title"), (2, "abstractNote"), (13, "url"), (14, "date"), (59, "DOI")]:
         db.execute("INSERT INTO fields VALUES(?, ?)", (fid, fname))
     db.execute("INSERT INTO creatorTypes VALUES(1, 'author')")
 
@@ -112,8 +112,8 @@ if __name__ == "__main__":
             '2024-06-20 10:00:00', '2024-06-20 10:00:00', NULL, 60)
     """)
 
-    # fields: title=1, abstractNote=2, url=13, date=14
-    for fid, fname in [(1, "title"), (2, "abstractNote"), (13, "url"), (14, "date")]:
+    # fields: title=1, abstractNote=2, url=13, date=14, DOI=59
+    for fid, fname in [(1, "title"), (2, "abstractNote"), (13, "url"), (14, "date"), (59, "DOI")]:
         db.execute("INSERT INTO fields VALUES(?, ?)", (fid, fname))
 
     # creatorTypes
@@ -147,6 +147,7 @@ if __name__ == "__main__":
     _add_data(1001, 14, "2024-06-15 2024-06-15", 2)
     _add_data(1001, 13, "https://example.com/full", 3)
     _add_data(1001, 2, "Abstract for full date", 4)
+    _add_data(1001, 59, "10.1234/full-date-test", 16)
     # 1002: Year-Month Item — title, date, url, 2 creators
     _add_data(1002, 1, "Year-Month Item", 5)
     _add_data(1002, 14, "2024-06-00 June 2024", 6)

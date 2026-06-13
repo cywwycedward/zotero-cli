@@ -269,20 +269,41 @@ class TestFieldFilter:
         assert "date: 2023" in result
         assert "title" not in result
 
-    def test_kv_filter_preserves_data_order(self) -> None:
-        data = {"date": "2023", "title": "Hello", "key": "ABC"}
-        env = Envelope.success(data=data, command="items.show", elapsed_ms=100)
-        result = render(
+    def test_kv_filter_preserves_config_order(self) -> None:
+        env = Envelope.success(
+            data={"z_field": "z", "a_field": "a", "m_field": "m"},
+            command="test",
+            elapsed_ms=0,
+        )
+        out = render(
             envelope=env,
             mode=OutputMode.KV,
             json_mode=False,
             quiet=False,
-            field_filter=["key", "title"],
+            field_filter=["m_field", "a_field", "z_field"],
         )
-        # Data order is: date, title, key. Filtered to key+title gives: title, key
-        lines = result.strip().split("\n")
+        lines = out.strip().split("\n")
+        assert lines[0].startswith("m_field:")
+        assert lines[1].startswith("a_field:")
+        assert lines[2].startswith("z_field:")
+
+    def test_kv_filter_skips_missing_fields(self) -> None:
+        env = Envelope.success(
+            data={"title": "T", "url": "U"},
+            command="test",
+            elapsed_ms=0,
+        )
+        out = render(
+            envelope=env,
+            mode=OutputMode.KV,
+            json_mode=False,
+            quiet=False,
+            field_filter=["title", "DOI", "url"],
+        )
+        lines = out.strip().split("\n")
+        assert len(lines) == 2
         assert lines[0].startswith("title:")
-        assert lines[1].startswith("key:")
+        assert lines[1].startswith("url:")
 
     def test_field_filter_ignored_in_json_mode(self) -> None:
         data = {"key": "ABC", "title": "Hello", "date": "2023"}
