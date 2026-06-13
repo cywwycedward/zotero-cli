@@ -156,6 +156,23 @@ class SQLiteReader:
             result.append(d)
         return result
 
+    def query_item_data(self, item_ids: list[int]) -> dict[int, dict[str, str]]:
+        if not item_ids:
+            return {}
+        placeholders = ",".join("?" * len(item_ids))
+        sql = f"""
+        SELECT d.itemID, f.fieldName, v.value
+        FROM itemData d
+        JOIN fields f ON f.fieldID = d.fieldID
+        JOIN itemDataValues v ON v.valueID = d.valueID
+        WHERE d.itemID IN ({placeholders})
+        """
+        cur = self._conn.execute(sql, tuple(item_ids))
+        result: dict[int, dict[str, str]] = {}
+        for r in cur.fetchall():
+            result.setdefault(r["itemID"], {})[r["fieldName"]] = r["value"]
+        return result
+
     def query_creators(self, item_ids: list[int]) -> dict[int, list[dict[str, Any]]]:
         if not item_ids:
             return {}
