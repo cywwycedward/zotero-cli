@@ -57,10 +57,10 @@ class FeedService:
         items: list[FeedItem] = []
         for r in rows:
             iid = r["item_id"]
-            dynamic = item_data_map.get(iid, {})
+            dynamic = {k: v for k, v in item_data_map.get(iid, {}).items() if k != "date"}
             merged = {**dynamic, **r}
-            if "abstract" not in merged and "abstractNote" in merged:
-                merged["abstract"] = merged["abstractNote"]
+            if "abstractNote" in merged:
+                merged.setdefault("abstract", merged.pop("abstractNote"))
             creators = creators_map.get(iid, [])
             merged["creators"] = [
                 {

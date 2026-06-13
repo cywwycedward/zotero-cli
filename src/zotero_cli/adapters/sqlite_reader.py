@@ -57,8 +57,9 @@ class SQLiteReader:
             )
 
     def _cache_field_ids(self) -> None:
+        placeholders = ",".join("?" * len(FIELD_NAMES))
         cur = self._conn.execute(
-            "SELECT fieldID, fieldName FROM fields WHERE fieldName IN (?)",
+            f"SELECT fieldID, fieldName FROM fields WHERE fieldName IN ({placeholders})",
             tuple(FIELD_NAMES),
         )
         for row in cur.fetchall():
