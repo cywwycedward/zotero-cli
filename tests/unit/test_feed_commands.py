@@ -269,3 +269,58 @@ class TestFeedsItemsCommand:
         mock_svc_cls.from_profile.return_value = mock_svc
         result = runner.invoke(feeds_app, ["items", "10", "--all-fields"], obj=_ctx())
         assert result.exit_code == 0
+
+
+class TestDynamicFieldMerge:
+    """FeedService merges dynamic itemData fields into FeedItem."""
+
+    def test_dynamic_fields_included_in_model_dump(self) -> None:
+        mock_reader = MagicMock()
+        mock_reader.feed_exists.return_value = True
+        mock_reader.query_items.return_value = [
+            {
+                "item_id": 1,
+                "feed_id": 10,
+                "guid": "g1",
+                "date_raw": "2024-01-01",
+                "date_sql": "2024-01-01",
+                "read_time": None,
+                "translated_time": None,
+            }
+        ]
+        mock_reader.query_item_data.return_value = {
+            1: {
+                "title": "Test",
+                "url": "https://example.com",
+                "DOI": "10.1234/test",
+                "abstractNote": "An abstract",
+            }
+        }
+        mock_reader.query_creators.return_value = {}
+        svc = FeedService(mock_reader)
+        items = svc.list_items(10)
+        d = items[0].model_dump()
+        assert d["DOI"] == "10.1234/test"
+
+    def test_dynamic_fields_populate_title_and_url(self) -> None:
+        mock_reader = MagicMock()
+        mock_reader.feed_exists.return_value = True
+        mock_reader.query_items.return_value = [
+            {
+                "item_id": 1,
+                "feed_id": 10,
+                "guid": "g1",
+                "date_raw": "2024-06-15",
+                "date_sql": "2024-06-15",
+                "read_time": None,
+                "translated_time": None,
+            }
+        ]
+        mock_reader.query_item_data.return_value = {
+            1: {"title": "Dynamic Title", "url": "https://dynamic.com", "DOI": "10.1/x"}
+        }
+        mock_reader.query_creators.return_value = {}
+        svc = FeedService(mock_reader)
+        items = svc.list_items(10)
+        assert items[0].title == "Dynamic Title"
+        assert items[0].url == "https://dynamic.com"

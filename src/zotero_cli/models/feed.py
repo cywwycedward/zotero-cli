@@ -41,7 +41,7 @@ class FeedItemCreator(BaseModel):
 class FeedItem(BaseModel):
     """A single feed item (feeds items query)."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="allow")
 
     feed_id: int
     item_id: int
