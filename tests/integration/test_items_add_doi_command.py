@@ -124,6 +124,61 @@ class TestAddDoiDryRun:
         )
         mock_create.assert_not_called()
 
+    def test_dry_run_with_attach_includes_would_upload(
+        self, mocker, runner, tmp_profile, monkeypatch, tmp_path
+    ) -> None:
+        monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
+        mocker.patch(
+            "zotero_cli.adapters.doi_metadata.crossref.CrossrefProvider.fetch",
+            return_value=SAMPLE_MESSAGE,
+        )
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.item_template",
+            return_value={
+                "itemType": "",
+                "title": "",
+                "creators": [],
+                "date": "",
+                "DOI": "",
+                "url": "",
+                "abstractNote": "",
+                "tags": [],
+                "collections": [],
+                "publicationTitle": "",
+                "volume": "",
+                "issue": "",
+                "pages": "",
+                "ISSN": "",
+                "publisher": "",
+            },
+        )
+        mock_create = mocker.patch("zotero_cli.adapters.zotero_api.ZoteroAPI.create_items")
+        mock_attach = mocker.patch(
+            "zotero_cli.services.attachment_service.AttachmentService.attach"
+        )
+
+        result = runner.invoke(
+            app,
+            [
+                "--json",
+                "items",
+                "add-doi",
+                "10.1038/s41586-020-2649-2",
+                "--dry-run",
+                "--attach",
+                "paper.pdf",
+            ],
+        )
+
+        assert result.exit_code == 0
+        env = json.loads(result.stdout)
+        assert env["ok"] is True
+        assert env["data"]["dry_run"] is True
+        assert len(env["data"]["would_create"]) == 1
+        assert env["data"]["would_upload"] == ["paper.pdf"]
+        mock_create.assert_not_called()
+        mock_attach.assert_not_called()
+
 
 class TestAddDoiCreate:
     def test_create_default_output(
@@ -269,3 +324,140 @@ class TestAddDoiErrors:
         env = json.loads(result.stdout)
         assert env["ok"] is False
         assert env["error"]["code"] == "INVALID_FIELD"
+
+
+class TestAddDoiAttach:
+    def test_attach_uploads_after_create_and_merges_keys(
+        self, mocker, runner, tmp_profile, monkeypatch, tmp_path
+    ) -> None:
+        monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
+        pdf = tmp_profile.parent / "paper.pdf"
+        pdf.write_text("dummy pdf")
+        mocker.patch(
+            "zotero_cli.adapters.doi_metadata.crossref.CrossrefProvider.fetch",
+            return_value=SAMPLE_MESSAGE,
+        )
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.item_template",
+            return_value={
+                "itemType": "",
+                "title": "",
+                "creators": [],
+                "date": "",
+                "DOI": "",
+                "url": "",
+                "abstractNote": "",
+                "tags": [],
+                "collections": [],
+                "publicationTitle": "",
+                "volume": "",
+                "issue": "",
+                "pages": "",
+                "ISSN": "",
+                "publisher": "",
+            },
+        )
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.create_items",
+            return_value={
+                "successful": [{"index": 0, "key": "DOIKEY", "version": 1}],
+                "unchanged": [],
+                "failed": [],
+            },
+        )
+        mock_attach = mocker.patch(
+            "zotero_cli.services.attachment_service.AttachmentService.attach",
+            return_value={
+                "data": {
+                    "backend": "zfs",
+                    "uploaded": [{"key": "ATT1"}],
+                    "unchanged": [],
+                    "failed": [],
+                },
+                "meta_extra": {"affected_keys": ["ATT1"], "backend": "zfs"},
+            },
+        )
+
+        result = runner.invoke(
+            app,
+            [
+                "--json",
+                "items",
+                "add-doi",
+                "10.1038/s41586-020-2649-2",
+                "--attach",
+                str(pdf),
+                "--attach-title",
+                "Full text",
+            ],
+        )
+
+        assert result.exit_code == 0
+        env = json.loads(result.stdout)
+        assert env["ok"] is True
+        assert "uploaded" in env["data"]
+        # AttachmentService.attach called with (parent_key, file, title=attach_title)
+        assert mock_attach.call_count == 1
+        call = mock_attach.call_args
+        assert call.args[0] == "DOIKEY"
+        assert str(call.args[1]) == str(pdf)
+        assert call.kwargs["title"] == "Full text"
+        # affected_keys carries the new item key AND the attachment key
+        assert "DOIKEY" in env["meta"]["affected_keys"]
+        assert "ATT1" in env["meta"]["affected_keys"]
+
+    def test_attach_without_item_key_errors(
+        self, mocker, runner, tmp_profile, monkeypatch, tmp_path
+    ) -> None:
+        monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
+        pdf = tmp_profile.parent / "paper.pdf"
+        pdf.write_text("dummy pdf")
+        mocker.patch(
+            "zotero_cli.adapters.doi_metadata.crossref.CrossrefProvider.fetch",
+            return_value=SAMPLE_MESSAGE,
+        )
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.item_template",
+            return_value={
+                "itemType": "",
+                "title": "",
+                "creators": [],
+                "date": "",
+                "DOI": "",
+                "url": "",
+                "abstractNote": "",
+                "tags": [],
+                "collections": [],
+                "publicationTitle": "",
+                "volume": "",
+                "issue": "",
+                "pages": "",
+                "ISSN": "",
+                "publisher": "",
+            },
+        )
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.create_items",
+            return_value={"successful": [], "unchanged": [], "failed": []},
+        )
+        mock_attach = mocker.patch(
+            "zotero_cli.services.attachment_service.AttachmentService.attach"
+        )
+
+        result = runner.invoke(
+            app,
+            [
+                "--json",
+                "items",
+                "add-doi",
+                "10.1038/s41586-020-2649-2",
+                "--attach",
+                str(pdf),
+            ],
+        )
+
+        assert result.exit_code == 1
+        env = json.loads(result.stdout)
+        assert env["ok"] is False
+        assert env["error"]["code"] == "GENERIC"
+        mock_attach.assert_not_called()
