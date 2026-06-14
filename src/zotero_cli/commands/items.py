@@ -301,9 +301,15 @@ def add_doi(
         str | None, typer.Option("--collection", help="Add to collection")
     ] = None,
     tags: Annotated[str | None, typer.Option("--tags", help="Comma-separated tags")] = None,
+    attach: Annotated[Path | None, typer.Option("--attach", help="Attach a PDF file")] = None,
+    attach_title: Annotated[
+        str | None, typer.Option("--attach-title", help="Attachment title")
+    ] = None,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Preview without creating")] = False,
 ) -> None:
     """Create an item by resolving metadata from a DOI via CrossRef."""
+    from zotero_cli.services.attachment_service import AttachmentService
+
     profile = _get_profile(ctx)
     tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
 
@@ -321,7 +327,25 @@ def add_doi(
             tags=tag_list,
             collection=collection,
         )
-        return result["data"], result.get("meta_extra")
+        data = result["data"]
+        meta = result.get("meta_extra") or {}
+        if dry_run:
+            if attach is not None:
+                data = {**data, "would_upload": [str(attach)]}
+            return data, meta
+        if attach is not None:
+            affected = meta.get("affected_keys", [])
+            if not affected:
+                raise CLIError(
+                    "Item created but server returned no item key; cannot attach file",
+                    hint="Re-run without --attach and attach manually",
+                )
+            parent_key = affected[0]
+            att_svc = AttachmentService(profile)
+            att_result = att_svc.attach(parent_key, attach, title=attach_title)
+            att_keys = att_result["meta_extra"].get("affected_keys", [])
+            return att_result["data"], {**meta, "affected_keys": affected + att_keys}
+        return data, meta
 
     _invoke_write(
         ctx,
