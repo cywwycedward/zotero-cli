@@ -1,6 +1,6 @@
 [project]
 name = "zotero"
-version = "0.2.3"
+version = "0.2.4"
 description = "Single-user, agent-first CLI for Zotero (literature management, PDF upload, RSS query)"
 requires-python = ">=3.11"
 readme = "README.md"
