@@ -27,6 +27,20 @@ class ListServiceResult(TypedDict):
     meta_extra: ListMetaExtra
 
 
+class FindByDoiMetaExtra(TypedDict, total=False):
+    count: int
+    total: int
+    query_doi: str
+    normalized_doi: str
+    collection: str | None
+    library_id: str
+
+
+class FindByDoiServiceResult(TypedDict):
+    data: list[dict[str, Any]]
+    meta_extra: FindByDoiMetaExtra
+
+
 class ShowServiceResult(TypedDict):
     data: dict[str, Any]
     meta_extra: NotRequired[dict[str, Any]]

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from zotero_cli.models.errors import ItemNotFoundError
+from zotero_cli.models.errors import InvalidFieldError, ItemNotFoundError
 from zotero_cli.services.item_service import ItemService
 
 
@@ -252,3 +252,109 @@ class TestFlattenItem:
 
         result = svc.search("query")
         assert result["data"][0]["title"] == "Search Result"
+
+
+class TestFindByDoi:
+    TARGET = "10.1038/s41586-020-2649-2"
+
+    def _item(self, key: str, doi: object) -> dict[str, object]:
+        return {"key": key, "data": {"key": key, "title": f"Paper {key}", "DOI": doi}}
+
+    def test_bare_doi_matches(self, svc, mock_api) -> None:
+        mock_api.items_top.return_value = [self._item("M1", self.TARGET)]
+        mock_api.library_id = "123"
+        result = svc.find_by_doi(self.TARGET)
+        assert [i["key"] for i in result["data"]] == ["M1"]
+        assert result["meta_extra"]["count"] == 1
+        assert result["meta_extra"]["normalized_doi"] == self.TARGET
+
+    def test_doi_prefix_input_matches(self, svc, mock_api) -> None:
+        mock_api.items_top.return_value = [self._item("M1", self.TARGET)]
+        mock_api.library_id = "123"
+        result = svc.find_by_doi(f"doi:{self.TARGET}")
+        assert [i["key"] for i in result["data"]] == ["M1"]
+        assert result["meta_extra"]["normalized_doi"] == self.TARGET
+
+    def test_url_input_matches(self, svc, mock_api) -> None:
+        mock_api.items_top.return_value = [self._item("M1", self.TARGET)]
+        mock_api.library_id = "123"
+        result = svc.find_by_doi(f"https://doi.org/{self.TARGET}")
+        assert [i["key"] for i in result["data"]] == ["M1"]
+
+    def test_case_insensitive_match(self, svc, mock_api) -> None:
+        mock_api.items_top.return_value = [self._item("M1", "10.1038/S41586-020-2649-2")]
+        mock_api.library_id = "123"
+        result = svc.find_by_doi(self.TARGET)
+        assert [i["key"] for i in result["data"]] == ["M1"]
+
+    def test_item_without_doi_skipped(self, svc, mock_api) -> None:
+        mock_api.items_top.return_value = [
+            {"key": "NO", "data": {"key": "NO", "title": "No DOI"}},
+            self._item("M1", self.TARGET),
+        ]
+        mock_api.library_id = "123"
+        result = svc.find_by_doi(self.TARGET)
+        assert [i["key"] for i in result["data"]] == ["M1"]
+
+    def test_dirty_or_unnormalizable_doi_skipped(self, svc, mock_api) -> None:
+        mock_api.items_top.return_value = [
+            self._item("EMPTY", ""),
+            self._item("PREFIXONLY", "doi:"),
+            self._item("NONE", None),
+            self._item("NUM", 12345),
+            self._item("M1", self.TARGET),
+        ]
+        mock_api.library_id = "123"
+        result = svc.find_by_doi(self.TARGET)
+        assert [i["key"] for i in result["data"]] == ["M1"]
+
+    def test_collection_scopes_fetch(self, svc, mock_api) -> None:
+        mock_api.items_top.return_value = []
+        mock_api.library_id = "123"
+        svc.find_by_doi(self.TARGET, collection="C1")
+        mock_api.items_top.assert_called_once_with(limit=100, start=0, collection="C1")
+
+    def test_paginates_until_short_page(self, svc, mock_api) -> None:
+        page1 = [self._item(f"K{i}", "10.0000/none") for i in range(100)]
+        page2 = [self._item("M1", self.TARGET)]
+        mock_api.items_top.side_effect = [page1, page2]
+        mock_api.library_id = "123"
+        result = svc.find_by_doi(self.TARGET)
+        assert [i["key"] for i in result["data"]] == ["M1"]
+        assert mock_api.items_top.call_count == 2
+        assert mock_api.items_top.call_args_list[0].kwargs["start"] == 0
+        assert mock_api.items_top.call_args_list[1].kwargs["start"] == 100
+
+    def test_paginates_until_empty_page(self, svc, mock_api) -> None:
+        page1 = [self._item(f"K{i}", "10.0000/none") for i in range(100)]
+        mock_api.items_top.side_effect = [page1, []]
+        mock_api.library_id = "123"
+        result = svc.find_by_doi(self.TARGET)
+        assert result["data"] == []
+        assert result["meta_extra"]["count"] == 0
+        assert mock_api.items_top.call_count == 2
+
+    def test_not_found_returns_empty(self, svc, mock_api) -> None:
+        mock_api.items_top.return_value = [self._item("X", "10.0000/none")]
+        mock_api.library_id = "123"
+        result = svc.find_by_doi(self.TARGET)
+        assert result["data"] == []
+        assert result["meta_extra"]["count"] == 0
+        assert result["meta_extra"]["total"] == 0
+
+    def test_invalid_doi_raises(self, svc, mock_api) -> None:
+        with pytest.raises(InvalidFieldError):
+            svc.find_by_doi("not-a-doi")
+
+    def test_meta_fields(self, svc, mock_api) -> None:
+        mock_api.items_top.return_value = [self._item("M1", self.TARGET)]
+        mock_api.library_id = "LIB9"
+        raw = f"https://doi.org/{self.TARGET}"
+        result = svc.find_by_doi(raw, collection="C1")
+        meta = result["meta_extra"]
+        assert meta["query_doi"] == raw
+        assert meta["normalized_doi"] == self.TARGET
+        assert meta["collection"] == "C1"
+        assert meta["library_id"] == "LIB9"
+        assert meta["count"] == 1
+        assert meta["total"] == 1
