@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `items find-doi <doi>` to look up existing items by exact DOI (local scan over bibliographic items in the whole library or a single `--collection`), kept fully decoupled from `items add-doi`. Accepts bare DOI, `doi:` prefix, and DOI URLs; `--quiet` prints matching item keys and `--json` returns the matches with `normalized_doi` / `count` / `collection` metadata.
+
 ## [0.2.4] - 2026-06-14
 
 ### Added

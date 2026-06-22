@@ -39,7 +39,7 @@ zotero-cli items create --type journalArticle --title "My Paper" --attach paper.
 
 | Group | Commands |
 |---|---|
-| `items` | list, search, show, create, update, delete, attach, export |
+| `items` | list, search, show, find-doi, create, add-doi, update, delete, attach, export |
 | `collections` | list, show, create, delete, add-items, remove-items |
 | `tags` | list, add, remove, rename, delete |
 | `feeds` | list, show, items |
