@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.5] - 2026-06-22
+
+### Added
+
+- Added `items find-doi <doi>` to look up existing items by exact DOI (local scan over bibliographic items in the whole library or a single `--collection`), kept fully decoupled from `items add-doi`. Accepts bare DOI, `doi:` prefix, and DOI URLs; `--quiet` prints matching item keys and `--json` returns the matches with `normalized_doi` / `count` / `collection` metadata.
 
 ## [0.2.4] - 2026-06-14
 

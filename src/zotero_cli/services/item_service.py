@@ -8,13 +8,15 @@ import builtins
 from typing import Any
 
 from zotero_cli.adapters.zotero_api import ZoteroAPI
-from zotero_cli.models.errors import ApiServerError, CLIError, from_code
+from zotero_cli.models.errors import ApiServerError, CLIError, InvalidFieldError, from_code
 from zotero_cli.models.results import (
+    FindByDoiServiceResult,
     ListServiceResult,
     MutationServiceResult,
     MutationSuccessfulItem,
     ShowServiceResult,
 )
+from zotero_cli.utils.doi import normalize_doi, validate_doi
 
 
 class ItemService:
@@ -75,6 +77,61 @@ class ItemService:
                 "next_start": None,
                 "library_id": self._api.library_id,
                 "library_version": self._api.last_modified_version(),
+            },
+        }
+
+    def find_by_doi(
+        self,
+        raw_doi: str,
+        *,
+        collection: str | None = None,
+    ) -> FindByDoiServiceResult:
+        """Find items whose data.DOI matches *raw_doi* (normalized, case-insensitive).
+
+        Zotero/pyzotero expose no DOI-field query, so we page through items_top
+        — the bibliographic, top-level item set (DOIs never live on attachments
+        or notes), the same set `items list` shows — over the whole library or a
+        single collection, and match locally. An item with a missing, non-string,
+        or unnormalizable DOI is skipped, never fatal (design §6.3 / §11).
+        "No match" returns an empty list, not an error.
+        """
+        doi = normalize_doi(raw_doi)
+        if doi is None or not validate_doi(doi):
+            raise InvalidFieldError(
+                f"Invalid DOI: {raw_doi!r}",
+                hint="Provide a bare DOI (10.xxxx/yyyy), doi: prefix, or DOI URL.",
+                context={"raw_input": raw_doi},
+            )
+        target = doi.lower()
+
+        matches: list[dict[str, Any]] = []
+        page_size = 100
+        start = 0
+        while True:
+            page = self._api.items_top(limit=page_size, start=start, collection=collection)
+            if not page:
+                break
+            for raw_item in page:
+                flat = _flatten_item(raw_item)
+                item_doi = flat.get("DOI")
+                if not isinstance(item_doi, str):
+                    continue
+                normalized = normalize_doi(item_doi)
+                if normalized is not None and normalized.lower() == target:
+                    matches.append(flat)
+            if len(page) < page_size:
+                break
+            start += page_size
+
+        return {
+            "data": matches,
+            "meta_extra": {
+                "count": len(matches),
+                "total": len(matches),
+                "query_doi": raw_doi,
+                "normalized_doi": doi,
+                "collection": collection,
+                "library_id": self._api.library_id,
             },
         }
 
