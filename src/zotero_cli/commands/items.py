@@ -185,6 +185,35 @@ def search_items(
     _invoke(ctx, "items.search", OutputMode.KV_LIST, work, field_filter=field_filter)
 
 
+# ── find-doi ────────────────────────────────────────────────────────────────
+
+
+@app.command("find-doi")
+def find_doi(
+    ctx: typer.Context,
+    doi: Annotated[str, typer.Argument(help="DOI, doi: prefix, or DOI URL")],
+    collection: Annotated[
+        str | None, typer.Option("--collection", help="Limit search to a collection key")
+    ] = None,
+    all_fields: Annotated[bool, typer.Option("--all-fields", help="Show all fields")] = False,
+) -> None:
+    """Find existing items by exact DOI.
+
+    Scans bibliographic (top-level) items — the same set as `items list`, since
+    DOIs only ever live on those, not on attachments or notes. Read-only local
+    match: never creates or modifies anything.
+    """
+    profile = _get_profile(ctx)
+    field_filter = _field_filter(ctx, all_fields)
+
+    def work() -> tuple[Any, dict[str, Any] | None]:
+        svc = ItemService.from_profile(profile)
+        result = svc.find_by_doi(doi, collection=collection)
+        return result["data"], dict(result["meta_extra"])
+
+    _invoke(ctx, "items.find_doi", OutputMode.KV_LIST, work, field_filter=field_filter)
+
+
 # ── show ───────────────────────────────────────────────────────────────────
 
 
