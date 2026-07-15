@@ -15,6 +15,7 @@ from zotero_cli.models.errors import (
     DoiNotFoundError,
     FeedNotFoundError,
     FileNotFoundCLIError,
+    FulltextNotFoundError,
     InsufficientPermissionsError,
     InvalidApiKeyError,
     InvalidDateFormatError,
@@ -87,6 +88,7 @@ class TestCLIErrorBase:
 
 USER_ERROR_CASES = [
     (ItemNotFoundError, "ITEM_NOT_FOUND"),
+    (FulltextNotFoundError, "FULLTEXT_NOT_FOUND"),
     (CollectionNotFoundError, "COLLECTION_NOT_FOUND"),
     (TagNotFoundError, "TAG_NOT_FOUND"),
     (FeedNotFoundError, "FEED_NOT_FOUND"),

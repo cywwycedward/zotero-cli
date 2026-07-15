@@ -391,6 +391,82 @@ class TestItemsExport:
         assert kwargs["limit"] == 100
 
 
+class TestItemsFulltext:
+    def test_fulltext_default_output(self, mocker, runner, tmp_profile) -> None:
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.fulltext_item",
+            return_value={
+                "content": "Full-text content",
+                "indexedPages": 12,
+                "totalPages": 12,
+            },
+        )
+
+        result = runner.invoke(app, ["items", "fulltext", "ATT1"])
+
+        assert result.exit_code == 0
+        assert result.stdout == "Full-text content"
+        assert result.stderr == ""
+
+    def test_fulltext_json_mode(self, mocker, runner, tmp_profile) -> None:
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.fulltext_item",
+            return_value={"content": "Full-text content", "indexedChars": 17},
+        )
+
+        result = runner.invoke(app, ["--json", "items", "fulltext", "ATT1"])
+
+        assert result.exit_code == 0
+        envelope = json.loads(result.stdout)
+        assert envelope["ok"] is True
+        assert envelope["data"]["key"] == "ATT1"
+        assert envelope["data"]["content"] == "Full-text content"
+        assert envelope["meta"]["command"] == "items.fulltext"
+        assert envelope["meta"]["item_key"] == "ATT1"
+
+    def test_fulltext_output_file(self, mocker, runner, tmp_profile, tmp_path) -> None:
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.fulltext_item",
+            return_value={"content": "Full-text content"},
+        )
+        output = tmp_path / "paper.txt"
+
+        result = runner.invoke(
+            app,
+            ["items", "fulltext", "ATT1", "--output", str(output)],
+        )
+
+        assert result.exit_code == 0
+        assert output.read_text(encoding="utf-8") == "Full-text content"
+        assert "Fetched" in result.stderr
+        assert result.stdout == ""
+
+    def test_fulltext_output_write_error_is_cli_error(
+        self, mocker, runner, tmp_profile, tmp_path
+    ) -> None:
+        mocker.patch(
+            "zotero_cli.adapters.zotero_api.ZoteroAPI.fulltext_item",
+            return_value={"content": "Full-text content"},
+        )
+        mocker.patch("pathlib.Path.write_text", side_effect=OSError("read-only"))
+
+        result = runner.invoke(
+            app,
+            ["--json", "items", "fulltext", "ATT1", "--output", str(tmp_path / "paper.txt")],
+        )
+
+        assert result.exit_code == 1
+        envelope = json.loads(result.stdout)
+        assert envelope["ok"] is False
+        assert envelope["error"]["code"] == "GENERIC"
+        assert "output path is writable" in envelope["error"]["hint"]
+
+    def test_fulltext_quiet_rejected(self, runner, tmp_profile) -> None:
+        result = runner.invoke(app, ["--quiet", "items", "fulltext", "ATT1"])
+
+        assert result.exit_code == 64
+
+
 class TestItemsAttach:
     def test_attach_command_exists(self, runner, tmp_profile) -> None:
         """Verify items attach subcommand is registered and shows help."""

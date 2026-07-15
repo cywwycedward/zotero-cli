@@ -18,6 +18,7 @@ from zotero_cli.models.errors import (
     ApiTimeoutError,
     CLIError,
     FileNotFoundCLIError,
+    FulltextNotFoundError,
     InsufficientPermissionsError,
     InvalidApiKeyError,
     ItemNotFoundError,
@@ -196,6 +197,17 @@ class ZoteroAPI:
             return self._zot.item(key)  # type: ignore[no-any-return]
         except zerr.ResourceNotFoundError as e:
             raise ItemNotFoundError(f"Item {key!r} not found", cause=e) from e
+        except zerr.PyZoteroError as e:
+            raise _map_pyzotero_exception(e) from e
+
+    def fulltext_item(self, key: str) -> PyzoteroResponse:
+        """Get full-text content for an attachment item."""
+        try:
+            return self._zot.fulltext_item(key)  # type: ignore[no-any-return]
+        except zerr.ResourceNotFoundError as e:
+            raise FulltextNotFoundError(
+                f"Full text for attachment {key!r} was not found", cause=e
+            ) from e
         except zerr.PyZoteroError as e:
             raise _map_pyzotero_exception(e) from e
 

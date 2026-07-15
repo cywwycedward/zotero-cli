@@ -175,7 +175,7 @@ rules, environment variables, and examples.
 
 | Group | Purpose | Commands |
 |---|---|---|
-| `items` | Read, write, attach, export, and DOI workflows | `list`, `search`, `show`, `find-doi`, `create`, `add-doi`, `update`, `delete`, `attach`, `export` |
+| `items` | Read, write, attach, full-text, export, and DOI workflows | `list`, `search`, `show`, `find-doi`, `fulltext`, `create`, `add-doi`, `update`, `delete`, `attach`, `export` |
 | `collections` | Collection tree and membership management | `list`, `show`, `create`, `delete`, `add-items`, `remove-items` |
 | `tags` | Tag listing and batch tag operations | `list`, `add`, `remove`, `rename`, `delete` |
 | `feeds` | Local Zotero RSS feed inspection | `list`, `show`, `items` |
@@ -259,6 +259,13 @@ Attach to an existing item:
 ```bash
 zotero-cli items attach ABCD1234 ./paper.pdf --dry-run
 zotero-cli items attach ABCD1234 ./paper.pdf
+```
+
+Get the indexed full text of an attachment item:
+
+```bash
+zotero-cli items fulltext ATTACH1234
+zotero-cli items fulltext ATTACH1234 --output paper.txt
 ```
 
 ### RSS Feed Query

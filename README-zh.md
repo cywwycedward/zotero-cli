@@ -172,7 +172,7 @@ path = "/home/user/Zotero/zotero.sqlite"
 
 | 命令组 | 用途 | 命令 |
 |---|---|---|
-| `items` | 读取、写入、附件、导出和 DOI 工作流 | `list`, `search`, `show`, `find-doi`, `create`, `add-doi`, `update`, `delete`, `attach`, `export` |
+| `items` | 读取、写入、附件、全文、导出和 DOI 工作流 | `list`, `search`, `show`, `find-doi`, `fulltext`, `create`, `add-doi`, `update`, `delete`, `attach`, `export` |
 | `collections` | 集合树和集合成员管理 | `list`, `show`, `create`, `delete`, `add-items`, `remove-items` |
 | `tags` | 标签列表和批量标签操作 | `list`, `add`, `remove`, `rename`, `delete` |
 | `feeds` | 本地 Zotero RSS feed 查询 | `list`, `show`, `items` |
@@ -255,6 +255,13 @@ zotero-cli items create \
 ```bash
 zotero-cli items attach ABCD1234 ./paper.pdf --dry-run
 zotero-cli items attach ABCD1234 ./paper.pdf
+```
+
+获取附件的已索引全文：
+
+```bash
+zotero-cli items fulltext ATTACH1234
+zotero-cli items fulltext ATTACH1234 --output paper.txt
 ```
 
 ### RSS Feed 查询

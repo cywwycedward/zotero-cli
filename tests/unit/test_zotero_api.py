@@ -9,6 +9,7 @@ from zotero_cli.models.errors import (
     ApiServerError,
     CLIError,
     FileNotFoundCLIError,
+    FulltextNotFoundError,
     InsufficientPermissionsError,
     InvalidApiKeyError,
     ItemNotFoundError,
@@ -302,6 +303,26 @@ class TestZoteroAPIReadMethods:
         result = api.item("X")
         assert result["key"] == "X"
         mock_zot.item.assert_called_once_with("X")
+
+    def test_fulltext_item_success(self, mocker) -> None:
+        api, mock_zot = _make_api(mocker)
+        mock_zot.fulltext_item.return_value = {
+            "content": "Full-text content",
+            "indexedPages": 12,
+            "totalPages": 12,
+        }
+
+        result = api.fulltext_item("ATT1")
+
+        assert result["content"] == "Full-text content"
+        mock_zot.fulltext_item.assert_called_once_with("ATT1")
+
+    def test_fulltext_item_not_found_raises_fulltext_not_found_error(self, mocker) -> None:
+        api, mock_zot = _make_api(mocker)
+        mock_zot.fulltext_item.side_effect = zerr.ResourceNotFoundError("not found")
+
+        with pytest.raises(FulltextNotFoundError, match="Full text for attachment 'MISSING'"):
+            api.fulltext_item("MISSING")
 
     def test_item_not_found_raises_item_not_found_error(self, mocker) -> None:
         api, mock_zot = _make_api(mocker)

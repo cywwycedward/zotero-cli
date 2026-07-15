@@ -1,4 +1,5 @@
-"""commands/items.py — item subcommands: list, search, show, create, update, delete, export.
+"""commands/items.py — item subcommands: list, search, show, fulltext, create,
+update, delete, export.
 
 Per DEVELOPMENT.md §5.2: all commands go through run_command for stdout/stderr split.
 Write commands attach audit log entries per design §9.4.
@@ -532,6 +533,97 @@ def attach_file(
         action,
         args_for_audit={"key": key, "file": str(file), "reuse_key": reuse_key, "dry_run": dry_run},
     )
+
+
+# ── fulltext ───────────────────────────────────────────────────────────────
+
+
+@app.command("fulltext")
+def get_fulltext(
+    ctx: typer.Context,
+    key: Annotated[str, typer.Argument(help="Attachment item key")],
+    output: Annotated[
+        Path | None, typer.Option("--output", help="Write full-text content to a file")
+    ] = None,
+) -> None:
+    """Get full-text content for an attachment item."""
+    import sys
+
+    from zotero_cli.commands._runner import emit_failure
+    from zotero_cli.models.envelope import Envelope
+    from zotero_cli.services.fulltext_service import FulltextService
+
+    options: GlobalOptions = ctx.obj
+
+    if options.json_mode and options.quiet:
+        emit_failure(
+            MutuallyExclusiveArgsError(
+                "--json and --quiet cannot be combined",
+                hint="Use --json for full envelope.",
+            ),
+            "items.fulltext",
+            0,
+            options,
+        )
+        sys.exit(64)
+    if options.quiet:
+        emit_failure(
+            MutuallyExclusiveArgsError(
+                "--quiet is not supported for fulltext",
+                hint="fulltext writes raw content; --quiet has no key concept.",
+            ),
+            "items.fulltext",
+            0,
+            options,
+        )
+        sys.exit(64)
+
+    start = time.perf_counter()
+    try:
+        profile = _get_profile(ctx)
+        svc = FulltextService.from_profile(profile)
+        result = svc.get(key)
+        data = result["data"]
+        content = data.get("content", "")
+        if output is not None:
+            output.write_text(content, encoding="utf-8")
+    except CLIError as err:
+        elapsed = int((time.perf_counter() - start) * 1000)
+        emit_failure(err, "items.fulltext", elapsed, options)
+        sys.exit(err.exit_code)
+    except OSError as err:
+        write_error = CLIError(
+            f"Failed to write full-text output to {output}: {err}",
+            hint="Check that the output path is writable.",
+            cause=err,
+        )
+        elapsed = int((time.perf_counter() - start) * 1000)
+        emit_failure(write_error, "items.fulltext", elapsed, options)
+        sys.exit(write_error.exit_code)
+    elapsed = int((time.perf_counter() - start) * 1000)
+
+    if options.json_mode:
+        json_data: dict[str, Any]
+        if output is not None:
+            json_data = {k: v for k, v in data.items() if k != "content"}
+            json_data["content_length"] = len(content)
+            json_data["output_path"] = str(output)
+        else:
+            json_data = dict(data)
+        env = Envelope.success(
+            data=json_data,
+            command="items.fulltext",
+            elapsed_ms=elapsed,
+            meta_extra=dict(result["meta_extra"]),
+        )
+        sys.stdout.write(env.model_dump_json(indent=2) + "\n")
+        sys.exit(0)
+
+    if output is not None:
+        sys.stderr.write(f"Fetched {len(content)} characters to {output}\n")
+    else:
+        sys.stdout.write(content)
+    sys.exit(0)
 
 
 # ── export ─────────────────────────────────────────────────────────────────

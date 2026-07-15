@@ -52,6 +52,10 @@ class ItemNotFoundError(CLIError):
     code = "ITEM_NOT_FOUND"
 
 
+class FulltextNotFoundError(CLIError):
+    code = "FULLTEXT_NOT_FOUND"
+
+
 class CollectionNotFoundError(CLIError):
     code = "COLLECTION_NOT_FOUND"
 
@@ -213,6 +217,7 @@ _REGISTRY: dict[str, type[CLIError]] = {
     cls.code: cls
     for cls in [
         ItemNotFoundError,
+        FulltextNotFoundError,
         CollectionNotFoundError,
         TagNotFoundError,
         FeedNotFoundError,

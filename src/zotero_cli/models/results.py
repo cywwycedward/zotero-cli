@@ -110,6 +110,25 @@ class ExportServiceResult(TypedDict):
     meta_extra: NotRequired[dict[str, Any]]
 
 
+class FulltextData(TypedDict, total=False):
+    key: str
+    content: str
+    indexedChars: int
+    totalChars: int
+    indexedPages: int
+    totalPages: int
+
+
+class FulltextMetaExtra(TypedDict):
+    item_key: str
+    content_length: int
+
+
+class FulltextServiceResult(TypedDict):
+    data: FulltextData
+    meta_extra: FulltextMetaExtra
+
+
 # --- Collections tree (mode=TREE) ---
 
 
