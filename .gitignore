@@ -33,3 +33,12 @@ docs/features/
 .idea/
 .vscode/
 *.swp
+
+.codex/
+.codex/**
+
+.claude/
+.claude/**
+
+.superpowers/
+.superpowers/**
