@@ -1,0 +1,47 @@
+# .gitattributes
+# Normalize all text files to LF in the repo and on checkout.
+# Rationale: Python project targeting Linux/WSL; modern editors handle LF on Windows fine.
+
+# Catch-all: let git auto-detect text vs binary, store and check out as LF
+* text=auto eol=lf
+
+# ── Python ────────────────────────────────────────────────────────────────────
+*.py    text eol=lf
+*.pyi   text eol=lf
+*.pyw   text eol=lf
+
+# ── Config / markup ───────────────────────────────────────────────────────────
+*.toml  text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.json  text eol=lf
+*.ini   text eol=lf
+*.cfg   text eol=lf
+*.txt   text eol=lf
+
+# ── Lock files ────────────────────────────────────────────────────────────────
+*.lock  text eol=lf
+
+# ── Docs ──────────────────────────────────────────────────────────────────────
+*.md    text eol=lf
+*.rst   text eol=lf
+
+# ── Shell ─────────────────────────────────────────────────────────────────────
+*.sh    text eol=lf
+
+# ── No-extension text files ───────────────────────────────────────────────────
+LICENSE     text eol=lf
+CHANGELOG   text eol=lf
+
+# ── Binary — never touch line endings ────────────────────────────────────────
+*.pdf       binary
+*.sqlite    binary
+*.sqlite3   binary
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.whl       binary
+*.zip       binary
+*.tar.gz    binary
